@@ -74,6 +74,7 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
     ```
 * Updated ! flag as a shortcut easily make spammable spells.
 * Added ~ flag to either cast or cancel the buff/aura if possible.  (Toggles the spell on/off)
+* Added /stopmacro command. 
 
 
 ## Dynamic Icons and Tooltips

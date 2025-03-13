@@ -142,3 +142,8 @@ SLASH_RETARGET1 = "/retarget"
 SlashCmdList.RETARGET = function(msg)
     CleveRoids.DoRetarget()
 end
+
+SLASH_STOPMACRO1 = "/stopmacro"
+SlashCmdList.STOPMACRO = function(msg)
+    CleveRoids.DoStopMacro(msg)
+end
