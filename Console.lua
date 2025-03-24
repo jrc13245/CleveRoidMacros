@@ -82,41 +82,12 @@ SlashCmdList.CAST = CleveRoids.CAST_SlashCmd
 
 CleveRoids.Hooks.TARGET_SlashCmd = SlashCmdList.TARGET
 CleveRoids.TARGET_SlashCmd = function(msg)
-    msg = CleveRoids.Trim(msg)
-
-    if CleveRoids.DoTarget(msg) then
-        return  -- If CleveRoids handles it, exit
-    end
-
-    -- 2. Improved Fallback: Use TargetByName with case insensitivity and trimming
-    local targetName = string.gsub(msg, "^%s*(.-)%s*$", "%1") -- Trim whitespace
-    if targetName ~= "" then -- Don't target nothing
-      TargetByName(targetName) -- Use WoW's built-in, less strict targeting
-      if UnitExists("target") then -- Check if target acquired
-        return
-      end
-      -- if not, try to target by name with case insensitivity
-      for i=1, GetNumPartyMembers()+GetNumRaidMembers() do
-        local name = UnitName("party"..i) or UnitName("raid"..i)
-        if name and string.lower(name) == string.lower(targetName) then
-          TargetByName(name)
-          if UnitExists("target") then 
-            return 
-          end
+    tmsg = CleveRoids.Trim(msg)
+    if CleveRoids.DoTarget(tmsg) then
+        if UnitExists("target") then
+            return
         end
-      end
-      for i=1, GetNumNearbyUnits() do
-        local name = UnitName("unit"..i)
-        if name and string.lower(name) == string.lower(targetName) then
-          TargetByName(name)
-          if UnitExists("target") then 
-            return 
-          end
-        end
-      end
     end
-
-    -- 3. If ALL fallbacks fail, call original (or let WoW handle it)
     CleveRoids.Hooks.TARGET_SlashCmd(msg)
 end
 
