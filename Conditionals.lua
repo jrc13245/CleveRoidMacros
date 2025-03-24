@@ -391,6 +391,7 @@ function CleveRoids.ValidateAura(unit, args, isbuff)
     while true do
         if isPlayer then
             texture, stacks, spellID, remaining = CleveRoids.GetPlayerAura(i, isbuff)
+--            print ("Found spell with texture ", texture, " stacks" , stacks, "remaining ", remaining)            
         else
             if isbuff then
                 texture, stacks, spellID = UnitBuff(unit, i)
@@ -398,15 +399,15 @@ function CleveRoids.ValidateAura(unit, args, isbuff)
                 texture, stacks, _, spellID = UnitDebuff(unit, i)
             end
         end
-
+--        print ("Found spell with texture ", texture, " stacks" , stacks, "remaining ", remaining)            
         if (CleveRoids.hasSuperwow and not spellID) or not texture then break end
         if (CleveRoids.hasSuperwow and args.name == SpellInfo(spellID))
             or (not CleveRoids.hasSuperwow and texture == CleveRoids.auraTextures[args.name])
         then
+            
             found = true
             break
         end
-
         i = i + 1
     end
 
