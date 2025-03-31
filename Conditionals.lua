@@ -439,16 +439,12 @@ end
 
 -- TODO: Look into https://github.com/Stanzilla/WoWUIBugs/issues/47 if needed
 function CleveRoids.GetCooldown(name, ignoreGCD)
-    -- TODO: temporarily disabled caching for https://github.com/bhhandley/CleveRoidMacros/issues/3
-    -- if CleveRoids.Cooldowns[name] then
-    --     if CleveRoids.Cooldowns[name] > GetTime() then
-    --         return CleveRoids.Cooldowns[name]
-    --     else
-    --         CleveRoids.Cooldowns[name] = nil
-    --     end
-    -- end
+    
+    if not name then return 0 end
+    local expires = CleveRoids.GetSpellCooldown(name, ignoreGCD)
+    local spell = CleveRoids.GetSpell(name)
+    if not spell then expires = CleveRoids.GetItemCooldown(name, ignoreGCD) end
 
-    local expires = CleveRoids.GetSpellCooldown(name, ignoreGCD) or CleveRoids.GetItemCooldown(name, ignoreGCD)
     if expires > GetTime() then
         -- CleveRoids.Cooldowns[name] = expires
         return expires
@@ -466,7 +462,7 @@ function CleveRoids.GetSpellCooldown(spellName, ignoreGCD)
     if not spell then return 0 end
 
     local start, cd = GetSpellCooldown(spell.spellSlot, spell.bookType)
-    if ignoreGCD and cd and cd == 1.5 then
+    if ignoreGCD and cd and cd > 0 and cd == 1.5 then
         return 0
     else
         return (start + cd)
@@ -487,8 +483,8 @@ function CleveRoids.GetItemCooldown(itemName, ignoreGCD)
         start, cd = GetContainerItemCooldown(item.bagID, item.slot)
     end
 
-    if ignoreGCD and cd and cd > 0 then
-        if cd == 1.5 then return 0 end
+    if ignoreGCD and cd and cd > 0 and cd == 1.5 then
+        return 0
     else
         return (start + cd)
     end
