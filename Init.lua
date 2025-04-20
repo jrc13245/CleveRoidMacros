@@ -79,6 +79,7 @@ CleveRoids.reactiveSpells = {
     ["Revenge"]       = true,
     ["Overpower"]     = true,
     ["Riposte"]       = true,
+    ["Surprise Attack"]  = true,
     ["Mongoose Bite"] = true,
     ["Counterattack"] = true,
     ["Arcane Surge"]  = true,
@@ -94,6 +95,11 @@ CleveRoids.auraTextures = {
     [CleveRoids.Localized.Spells["Stealth"]]    = "Interface\\Icons\\Ability_Stealth",
     [CleveRoids.Localized.Spells["Prowl"]]      = "Interface\\Icons\\Ability_Ambush",
     [CleveRoids.Localized.Spells["Shadowform"]] = "Interface\\Icons\\Spell_Shadow_Shadowform",
+    ["Seal of Wisdom"] = "Interface\\Icons\\Spell_Holy_RighteousnessAura",
+    ["Seal of the Crusader"] = "Interface\\Icons\\Spell_Holy_HolySmite",
+    ["Seal of Light"] = "Interface\\Icons\\Spell_Holy_HealingAura",
+    ["Seal of the Justice"] = "Interface\\Icons\\Spell_Holy_SealOfWrath",
+    ["Seal of Righteousness"] = "Interface\\Icons\\Ability_ThunderBolt",
 }
 
 
