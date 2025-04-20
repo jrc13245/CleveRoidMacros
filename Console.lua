@@ -83,6 +83,12 @@ SlashCmdList.CAST = CleveRoids.CAST_SlashCmd
 CleveRoids.Hooks.TARGET_SlashCmd = SlashCmdList.TARGET
 CleveRoids.TARGET_SlashCmd = function(msg)
     tmsg = CleveRoids.Trim(msg)
+
+    if tmsg ~= "" and not string.find(tmsg, "%[") and not string.find(tmsg, "@") then
+        CleveRoids.Hooks.TARGET_SlashCmd(tmsg)
+        return
+    end
+
     if CleveRoids.DoTarget(tmsg) then
         if UnitExists("target") then
             return
