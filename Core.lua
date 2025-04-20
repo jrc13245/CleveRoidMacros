@@ -649,11 +649,11 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
     local origTarget = conditionals.target
     if conditionals.target == "mouseover" then
         if UnitExists("mouseover") then
-             conditionals.target = "mouseover"
+            conditionals.target = "mouseover"
+        elseif CleveRoids.mouseoverUnit and UnitExists(CleveRoids.mouseoverUnit) then
+            conditionals.target = CleveRoids.mouseoverUnit
         else
-
-             conditionals.target = origTarget
-             return false
+            conditionals.target = "mouseover"
         end
     end
 
