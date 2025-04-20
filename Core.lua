@@ -582,16 +582,15 @@ function CleveRoids.TestAction(cmd, args)
 
     if conditionals.target == "mouseover" then
         if not UnitExists("mouseover") then
-            conditionals.target = CleveRoids.mouseoverUnit
-        end
-        if not conditionals.target or (conditionals.target ~= "focus" and not UnitExists(conditionals.target)) then
+            conditionals.target = "mouseover"
+        else
             conditionals.target = origTarget
             return false
         end
     end
 
     CleveRoids.FixEmptyTarget(conditionals)
-    CleveRoids.SetHelp(conditionals)
+    -- CleveRoids.SetHelp(conditionals)
 
     for k, v in pairs(conditionals) do
         if not CleveRoids.ignoreKeywords[k] then
@@ -645,12 +644,12 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
 
     local origTarget = conditionals.target
     if conditionals.target == "mouseover" then
-        if not UnitExists("mouseover") then
-            conditionals.target = CleveRoids.mouseoverUnit
-        end
-        if not conditionals.target or (conditionals.target ~= "focus" and not UnitExists(conditionals.target)) then
-            conditionals.target = origTarget
-            return false
+        if UnitExists("mouseover") then
+             conditionals.target = "mouseover"
+        else
+
+             conditionals.target = origTarget
+             return false
         end
     end
 
@@ -659,7 +658,7 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
         needRetarget = fixEmptyTargetFunc(conditionals, msg, hook)
     end
 
-    CleveRoids.SetHelp(conditionals)
+    -- CleveRoids.SetHelp(conditionals)
 
     if conditionals.target == "focus" then
         if UnitExists("target") and UnitName("target") == CleveRoids.GetFocusName() then
@@ -690,19 +689,17 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
 
     if conditionals.target ~= nil and targetBeforeAction and not (CleveRoids.hasSuperwow and action == CastSpellByName) then
         if not UnitIsUnit("target", conditionals.target) then
+            if SpellIsTargeting() then
+                SpellStopCasting()
+            end
+            TargetUnit(conditionals.target)
             needRetarget = true
+        else
+             if needRetarget then needRetarget = false end
         end
-
-        if SpellIsTargeting() then
-            SpellStopCasting()
-        end
-
-        TargetUnit(conditionals.target)
-    else
-        if needRetarget then
-            TargetLastTarget()
-            needRetarget = false
-        end
+    elseif needRetarget then
+        TargetLastTarget()
+        needRetarget = false
     end
 
     local result = true
@@ -712,10 +709,15 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
         else
             result = CleveRoids.ExecuteMacroByName(string.sub(msg, 2, -2))
         end
-    else
+    else -- This 'else' corresponds to 'if string.sub(msg, 1, 1) == "{"...'
         if CleveRoids.hasSuperwow and action == CastSpellByName and conditionals.target then
-            CastSpellByName(msg, conditionals.target)
+            CastSpellByName(msg, conditionals.target) -- SuperWoW handles targeting via argument
+        elseif action == CastSpellByName then
+             -- For standard CastSpellByName, targeting is handled by the TargetUnit call above.
+             -- Pass only the spell name.
+            action(msg)
         else
+            -- For other actions like UseContainerItem etc.
             action(msg)
         end
     end

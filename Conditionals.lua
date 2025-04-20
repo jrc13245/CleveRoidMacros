@@ -548,11 +548,11 @@ CleveRoids.Keywords = {
     end,
 
     help = function(conditionals)
-        return CleveRoids.CheckHelp(conditionals.target, conditionals.help)
+        return conditionals.help and conditionals.target and UnitExists(conditionals.target) and UnitCanAssist("player", conditionals.target)
     end,
 
     harm = function(conditionals)
-        return CleveRoids.CheckHelp(conditionals.target, conditionals.help)
+        return conditionals.harm and conditionals.target and UnitExists(conditionals.target) and UnitCanAttack("player", conditionals.target)
     end,
 
     stance = function(conditionals)
