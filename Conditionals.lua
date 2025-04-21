@@ -509,7 +509,7 @@ function CleveRoids.IsReactiveUsable(spellName)
     if not CleveRoids.reactiveSlots[spellName] then return false end
     local actionSlot = CleveRoids.reactiveSlots[spellName]
 
-    local isUsable, oom = IsUsableAction(actionSlot)
+    local isUsable, oom = CleveRoids.Hooks.OriginalIsUsableAction(actionSlot)
     local start, duration = GetActionCooldown(actionSlot)
 
     if isUsable and (start == 0 or duration == 1.5) then -- 1.5 just means gcd is active

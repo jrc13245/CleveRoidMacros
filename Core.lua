@@ -1064,6 +1064,7 @@ function IsActionInRange(slot, unit)
     end
 end
 
+CleveRoids.Hooks.OriginalIsUsableAction = IsUsableAction
 CleveRoids.Hooks.IsUsableAction = IsUsableAction
 function IsUsableAction(slot, unit)
     local actions = CleveRoids.GetAction(slot)
