@@ -831,7 +831,7 @@ function CleveRoids.DoUse(msg)
             -- we need to target the spell but targeting before cast counts as a target change
             -- and this is potentially bad for things like the OH swing timer reset bug
 
-            handled = CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action)
+            handled = CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, true, action)
         end
         if handled then break end
     end
@@ -987,10 +987,10 @@ function CleveRoids.OnUpdate(self)
 
     local time = GetTime()
     -- Slow down a bit.
-    if (time - CleveRoids.lastUpdate) < 0.1 then return end
+    if (time - CleveRoids.lastUpdate) < 0.5 then return end
     CleveRoids.lastUpdate = time
 
-    if CleveRoids.CurrentSpell.autoAttackLock and (time - CleveRoids.autoAttackLockElapsed) > 0.2 then
+    if CleveRoids.CurrentSpell.autoAttackLock and (time - CleveRoids.autoAttackLockElapsed) > 0.5 then
         CleveRoids.CurrentSpell.autoAttackLock = false
         CleveRoids.CurrentSpell.autoAttackLockElapsed = nil
     end
