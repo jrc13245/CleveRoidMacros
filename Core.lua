@@ -7,7 +7,7 @@
 local _G = _G or getfenv(0)
 local CleveRoids = _G.CleveRoids or {}
 _G.CleveRoids = CleveRoids
-
+CleveRoids.lastItemIndexTime = 0
 
 function CleveRoids.GetSpellCost(spellSlot, bookType)
     CleveRoids.Frame:SetOwner(WorldFrame, "ANCHOR_NONE")
@@ -1007,9 +1007,7 @@ function CleveRoids.OnUpdate(self)
             CleveRoids.spell_tracking[guid] = nil
         end
     end
-
-
-    CleveRoids.IndexActionBars()
+    -- CleveRoids.IndexActionBars()
 end
 
 CleveRoids.Hooks.GameTooltip.SetAction = GameTooltip.SetAction
@@ -1338,10 +1336,19 @@ end
 
 function CleveRoids.Frame:UPDATE_MACROS()
     CleveRoids.currentSequence = nil
+    -- Explicitly nil tables before re-assignment
+    CleveRoids.ParsedMsg = nil;
     CleveRoids.ParsedMsg = {}
+
+    CleveRoids.Macros = nil;
     CleveRoids.Macros = {}
+
+    CleveRoids.Actions = nil;
     CleveRoids.Actions = {}
+
+    CleveRoids.Sequences = nil;
     CleveRoids.Sequences = {}
+
     CleveRoids.IndexSpells()
     CleveRoids.IndexTalents()
     CleveRoids.IndexActionBars()
@@ -1357,14 +1364,25 @@ function CleveRoids.Frame:ACTIONBAR_SLOT_CHANGED()
 end
 
 function CleveRoids.Frame:BAG_UPDATE()
-    CleveRoids.IndexItems()
+    local now = GetTime()
+    -- Only index items if more than 1 second has passed since the last index
+    if (now - (CleveRoids.lastItemIndexTime or 0)) > 1.0 then
+        CleveRoids.lastItemIndexTime = now
+        CleveRoids.IndexItems()
+    end
 end
 
 function CleveRoids.Frame:UNIT_INVENTORY_CHANGED()
     if arg1 ~= "player" then
         return
     end
-    CleveRoids.IndexItems()
+    
+    local now = GetTime()
+    -- Only index items if more than 1 second has passed since the last index
+    if (now - (CleveRoids.lastItemIndexTime or 0)) > 1.0 then
+        CleveRoids.lastItemIndexTime = now
+        CleveRoids.IndexItems()
+    end
 end
 
 -- just a secondary check
