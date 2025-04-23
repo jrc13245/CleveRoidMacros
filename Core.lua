@@ -8,6 +8,7 @@ local _G = _G or getfenv(0)
 local CleveRoids = _G.CleveRoids or {}
 _G.CleveRoids = CleveRoids
 CleveRoids.lastItemIndexTime = 0
+CleveRoids.initializationTimer = nil
 
 function CleveRoids.GetSpellCost(spellSlot, bookType)
     CleveRoids.Frame:SetOwner(WorldFrame, "ANCHOR_NONE")
@@ -28,35 +29,56 @@ end
 
 function CleveRoids.TestForActiveAction(actions)
     if not actions then return end
-
+    local currentActive = actions.active
+    local currentSequence = actions.sequence
     local hasActive = false
+    local newActiveAction = nil
+    local newSequence = nil
+
     if actions.tooltip and table.getn(actions.list) == 0 then
-        CleveRoids.TestAction(actions.cmd, actions.args)
-        hasActive = true
-        actions.active = actions.tooltip
+        if CleveRoids.TestAction(actions.cmd or "", actions.args or "") then
+      
+            hasActive = true
+            actions.active = actions.tooltip
+        end
     else
         for _, action in actions.list do
             -- break on first action that passes tests
             if CleveRoids.TestAction(action.cmd, action.args) then
                 hasActive = true
                 if action.sequence then
-                    actions.sequence = action.sequence
-                    actions.active = CleveRoids.GetCurrentSequenceAction(actions.sequence)
+                    newSequence = action.sequence
+                    newActiveAction = CleveRoids.GetCurrentSequenceAction(newSequence)
+                    if not newActiveAction then hasActive = false end
                 else
-                    actions.active = action
+                    newActiveAction = action
                 end
-                break
+                if hasActive then break end
             end
         end
     end
 
+    local changed = false
+    if currentActive ~= newActiveAction or currentSequence ~= newSequence then
+        actions.active = newActiveAction
+        actions.sequence = newSequence
+        changed = true
+    end
+
     if not hasActive then
-        actions.active = nil
-        actions.sequence = nil
-        return
+        if actions.active ~= nil or actions.sequence ~= nil then
+             actions.active = nil
+             actions.sequence = nil
+             changed = true
+        end
+        return changed
     end
 
     if actions.active then
+        local previousUsable = actions.active.usable
+        local previousOom = actions.active.oom
+        local previousInRange = actions.active.inRange
+
         if actions.active.spell then
             actions.active.inRange = 1
 
@@ -87,13 +109,21 @@ function CleveRoids.TestForActiveAction(actions)
             actions.active.inRange = 1
             actions.active.usable = 1
         end
+        if actions.active.usable ~= previousUsable or
+           actions.active.oom ~= previousOom or
+           actions.active.inRange ~= previousInRange then
+            changed = true
+        end
     end
+    return changed
 end
 
 function CleveRoids.TestForAllActiveActions()
     for slot, actions in CleveRoids.Actions do
-        CleveRoids.TestForActiveAction(actions)
-        CleveRoids.SendEventForAction(slot, "ACTIONBAR_SLOT_CHANGED", slot)
+        local stateChanged = CleveRoids.TestForActiveAction(actions)
+        if stateChanged then 
+            CleveRoids.SendEventForAction(slot, "ACTIONBAR_SLOT_CHANGED", slot)
+        end
     end
 end
 
@@ -981,11 +1011,21 @@ function CleveRoids.DoCastSequence(sequence)
 end
 
 function CleveRoids.OnUpdate(self)
+    local time = GetTime()
+    if CleveRoids.initializationTimer and time >= CleveRoids.initializationTimer then
+        CleveRoids.IndexItems()
+        CleveRoids.IndexActionBars()
+        CleveRoids.ready = true
+        CleveRoids.initializationTimer = nil
+        CleveRoids.TestForAllActiveActions()
+
+        CleveRoids.lastUpdate = time
+        return
+    end
+
     -- make sure spells and items have been parsed
     if not CleveRoids.ready then return end
 
-
-    local time = GetTime()
     -- Slow down a bit.
     if (time - CleveRoids.lastUpdate) < 0.5 then return end
     CleveRoids.lastUpdate = time
@@ -999,14 +1039,15 @@ function CleveRoids.OnUpdate(self)
         if sequence.index > 1 and sequence.reset.secs and (time - sequence.lastUpdate) >= sequence.reset.secs then
             CleveRoids.ResetSequence(sequence)
         end
-        sequence.active = CleveRoids.TestAction(sequence.cmd, sequence.args)
+        -- sequence.active = CleveRoids.TestAction(sequence.cmd, sequence.args)
     end
 
-    for guid,cast in CleveRoids.spell_tracking do
+    for guid,cast in pairs(CleveRoids.spell_tracking) do
         if time > cast.expires then
             CleveRoids.spell_tracking[guid] = nil
         end
     end
+    CleveRoids.TestForAllActiveActions()
     -- CleveRoids.IndexActionBars()
 end
 
@@ -1206,9 +1247,7 @@ function CleveRoids.Frame:PLAYER_LOGIN()
     _, CleveRoids.playerClass = UnitClass("player")
     _, CleveRoids.playerGuid = UnitExists("player")
     CleveRoids.IndexSpells()
-    CleveRoids.IndexItems()
-    CleveRoids.IndexActionBars()
-    CleveRoids.ready = true
+    CleveRoids.initializationTimer = GetTime() + 1.5
     CleveRoids.Print("|cFF4477FFCleveR|r|cFFFFFFFFoid Macros|r |cFF00FF00Loaded|r - See the README.")
 end
 
