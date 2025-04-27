@@ -567,7 +567,7 @@ CleveRoids.Keywords = {
         if type(conditionals.mod) ~= "table" then
             return CleveRoids.kmods.mod()
         end
-        return Or(conditionals.mod, function(mod)
+        return And(conditionals.mod, function(mod)
             return CleveRoids.kmods[mod]()
         end)
     end,
@@ -609,7 +609,7 @@ CleveRoids.Keywords = {
 
     casting = function(conditionals)
         if type(conditionals.casting) ~= "table" then return CleveRoids.CheckSpellCast(conditionals.target, "") end
-        return Or(conditionals.casting, function (spell)
+        return And(conditionals.casting, function (spell)
             return CleveRoids.CheckSpellCast(conditionals.target, spell)
         end)
     end,
@@ -624,7 +624,7 @@ CleveRoids.Keywords = {
     zone = function(conditionals)
         local zone = GetRealZoneText()
         local sub_zone = GetSubZoneText()
-        return Or(conditionals.zone, function (v)
+        return And(conditionals.zone, function (v)
             return (sub_zone ~= "" and (v == sub_zone) or (v == zone))
         end)
     end,
@@ -638,7 +638,7 @@ CleveRoids.Keywords = {
     end,
 
     equipped = function(conditionals)
-        return Or(conditionals.equipped, function (v)
+        return And(conditionals.equipped, function (v)
             return (CleveRoids.HasWeaponEquipped(v) or CleveRoids.HasGearEquipped(v))
         end)
     end,
@@ -658,7 +658,7 @@ CleveRoids.Keywords = {
     end,
 
     reactive = function(conditionals)
-        return Or(conditionals.reactive, function (v)
+        return And(conditionals.reactive, function (v)
             return CleveRoids.IsReactiveUsable(v)
         end)
     end,
@@ -670,7 +670,7 @@ CleveRoids.Keywords = {
     end,
 
     member = function(conditionals)
-        return Or(conditionals.member, function(v)
+        return And(conditionals.member, function(v)
             return
                 CleveRoids.IsTargetInGroupType(conditionals.target, "party")
                 or CleveRoids.IsTargetInGroupType(conditionals.target, "raid")
@@ -697,7 +697,7 @@ CleveRoids.Keywords = {
         if type(conditionals.group) ~= "table" then
             conditionals.group = { "party", "raid" }
         end
-        return Or(conditionals.group, function(groups)
+        return And(conditionals.group, function(groups)
             if group == "party" then
                 return GetNumPartyMembers() > 0
             elseif group == "raid" then
@@ -707,13 +707,13 @@ CleveRoids.Keywords = {
     end,
 
     checkchanneled = function(conditionals)
-        return Or(conditionals.checkchanneled, function(channeledSpells)
+        return And(conditionals.checkchanneled, function(channeledSpells)
             return CleveRoids.CheckChanneled(channeledSpells)
         end)
     end,
 
     buff = function(conditionals)
-        return Or(conditionals.buff, function(v)
+        return And(conditionals.buff, function(v)
             return CleveRoids.ValidateUnitBuff(conditionals.target, v)
         end)
     end,
@@ -725,7 +725,7 @@ CleveRoids.Keywords = {
     end,
 
     debuff = function(conditionals)
-        return Or(conditionals.debuff, function(v)
+        return And(conditionals.debuff, function(v)
             return CleveRoids.ValidateUnitDebuff(conditionals.target, v)
         end)
     end,
@@ -737,7 +737,7 @@ CleveRoids.Keywords = {
     end,
 
     mybuff = function(conditionals)
-        return Or(conditionals.mybuff, function(v)
+        return And(conditionals.mybuff, function(v)
             return CleveRoids.ValidatePlayerBuff(v)
         end)
     end,
@@ -749,7 +749,7 @@ CleveRoids.Keywords = {
     end,
 
     mydebuff = function(conditionals)
-        return Or(conditionals.mydebuff, function(v)
+        return And(conditionals.mydebuff, function(v)
             return CleveRoids.ValidatePlayerDebuff(v)
         end)
     end,
@@ -857,7 +857,7 @@ CleveRoids.Keywords = {
     end,
 
     cooldown = function(conditionals)
-        return Or(conditionals.cooldown,function (v)
+        return And(conditionals.cooldown,function (v)
             return CleveRoids.ValidateCooldown(v, true)
         end)
     end,
@@ -869,7 +869,7 @@ CleveRoids.Keywords = {
     end,
 
     cdgcd = function(conditionals)
-        return Or(conditionals.cdgcd,function (v)
+        return And(conditionals.cdgcd,function (v)
             return CleveRoids.ValidateCooldown(v, false)
         end)
     end,
@@ -910,7 +910,7 @@ CleveRoids.Keywords = {
 
     inrange = function(conditionals)
         if not IsSpellInRange then return end
-        return Or(conditionals.inrange, function(spellName)
+        return And(conditionals.inrange, function(spellName)
             return IsSpellInRange(spellName or conditionals.action, conditionals.target) == 1
         end)
     end,
@@ -923,7 +923,7 @@ CleveRoids.Keywords = {
     end,
 
     combo = function(conditionals)
-        return Or(conditionals.combo, function(args)
+        return And(conditionals.combo, function(args)
             return CleveRoids.ValidateComboPoints(args.operator, args.amount)
         end)
     end,
