@@ -104,7 +104,7 @@ SlashCmdList.CASTSEQUENCE = function(msg)
     msg = CleveRoids.Trim(msg)
     local sequence = CleveRoids.GetSequence(msg)
     if not sequence then return end
-    if not sequence.active then return end
+    -- if not sequence.active then return end
 
     CleveRoids.DoCastSequence(sequence)
 end
