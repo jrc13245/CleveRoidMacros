@@ -1027,10 +1027,10 @@ function CleveRoids.OnUpdate(self)
     if not CleveRoids.ready then return end
 
     -- Slow down a bit.
-    if (time - CleveRoids.lastUpdate) < 0.5 then return end
+    if (time - CleveRoids.lastUpdate) < 0.2 then return end
     CleveRoids.lastUpdate = time
 
-    if CleveRoids.CurrentSpell.autoAttackLock and (time - CleveRoids.autoAttackLockElapsed) > 0.5 then
+    if CleveRoids.CurrentSpell.autoAttackLock and (time - CleveRoids.autoAttackLockElapsed) > 0.2 then
         CleveRoids.CurrentSpell.autoAttackLock = false
         CleveRoids.CurrentSpell.autoAttackLockElapsed = nil
     end
