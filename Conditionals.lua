@@ -202,28 +202,68 @@ function CleveRoids.ValidateComboPoints(operator, amount)
 end
 
 function CleveRoids.ValidateKnown(args)
-    if not args then return false end
-    if table.getn(CleveRoids.Talents) == 0 then CleveRoids.IndexTalents() end
-
-    if type(args) ~= "table" then
-        args = { name = args }
-    end
-
-    local spell, talent = CleveRoids.GetSpell(args.name), nil
-    if not spell then
-        talent = CleveRoids.GetTalent(args.name)
-    end
-
-    if not spell and not talent then return false end
-    local rank = spell and string.gsub(spell.rank, "Rank ", "") or talent
-
-    if rank and not args.amount and not args.operator then
-        return true
-    elseif args.amount and CleveRoids.operators[args.operator] then
-        return CleveRoids.comparators[args.operator](tonumber(rank), args.amount)
-    else
+    if not args then
         return false
     end
+    if table.getn(CleveRoids.Talents) == 0 then
+        CleveRoids.IndexTalents()
+    end
+
+    local effective_name_to_check
+    local original_args_for_rank_check = args
+
+    if type(args) ~= "table" then
+        effective_name_to_check = args
+        args = { name = args }
+    else
+        effective_name_to_check = args.name
+    end
+
+    local spell = CleveRoids.GetSpell(effective_name_to_check)
+    local talent_points = nil
+
+    if not spell then
+        talent_points = CleveRoids.GetTalent(effective_name_to_check)
+    end
+
+    if not spell and talent_points == nil then
+        return false
+    end
+
+    local arg_amount = nil
+    local arg_operator = nil
+    if type(original_args_for_rank_check) == "table" then
+        arg_amount = original_args_for_rank_check.amount
+        arg_operator = original_args_for_rank_check.operator
+    end
+
+    if spell then
+        local spell_rank_str = spell.rank or (spell.highest and spell.highest.rank) or ""
+        local spell_rank_num_str = string.gsub(spell_rank_str, "Rank ", "")
+
+        if spell_rank_num_str ~= "" and not arg_amount and not arg_operator then
+            return true
+        elseif arg_amount and arg_operator and CleveRoids.operators[arg_operator] and spell_rank_num_str ~= "" then
+            local numeric_rank = tonumber(spell_rank_num_str)
+            if numeric_rank then
+                return CleveRoids.comparators[arg_operator](numeric_rank, arg_amount)
+            else
+                return false
+            end
+        else
+            return false
+        end
+    elseif talent_points ~= nil then
+        if not arg_amount and not arg_operator then
+            return talent_points > 0
+        elseif arg_amount and arg_operator and CleveRoids.operators[arg_operator] then
+            return CleveRoids.comparators[arg_operator](talent_points, arg_amount)
+        else
+            return false
+        end
+    end
+    
+    return false
 end
 
 function CleveRoids.ValidateResting()

@@ -1,10 +1,10 @@
 ## Interface: 11200
-## Author: Mewtiny, DWG, MarcelineVQ, _brain
+## Author: Mewtiny, DWG, MarcelineVQ, _brain, Torio
 ## Title: |cFF4477FFCleveR|r|cFFFFFFFFoid - Weird|r|cFF4477FFer|r|cFFFFFFFF Vibes|r
-## Notes: Vanilla macros on steroids!
+## Notes: Vanilla macros on steroids! Now with extra steroids!
 ## Title-deDE: |cFF4477FFCleveR|r|cFFFFFFFFoid - Weird|r|cFF4477FFer|r|cFFFFFFFF Vibes|r
 ## Notes-deDE: Vanilla Macros auf Steroide!
-## Version: 1.10
+## Version: 1.11
 ## OptionalDeps: ClassicFocus, FocusFrame, pfUI, SuperMacro, Bongos_ActionBar
 Localization.lua
 Init.lua

@@ -1055,24 +1055,67 @@ CleveRoids.Hooks.GameTooltip.SetAction = GameTooltip.SetAction
 function GameTooltip.SetAction(self, slot)
     local actions = CleveRoids.GetAction(slot)
 
-    if actions and (actions.active or actions.tooltip) then
-        local tt = actions.active or actions.tooltip
+    local action_to_display_info = nil
+    if actions then
+        if actions.active then
+            action_to_display_info = actions.active
+        elseif actions.tooltip then
+            action_to_display_info = actions.tooltip
+        end
+    end
 
-        if tt.spell then
-            GameTooltip:SetSpell(tt.spell.spellSlot, tt.spell.bookType)
-            local rank = tt.spell.rank or tt.spell.highest.rank
-            GameTooltipTextRight1:SetText("|cff808080" .. rank .."|r")
+    if action_to_display_info and action_to_display_info.action then
+        local action_name = action_to_display_info.action
+        
+        local current_spell_data = CleveRoids.GetSpell(action_name)
+        if current_spell_data then
+            GameTooltip:SetSpell(current_spell_data.spellSlot, current_spell_data.bookType)
+            local rank_info = current_spell_data.rank or (current_spell_data.highest and current_spell_data.highest.rank)
+            if rank_info and rank_info ~= "" then
+                GameTooltipTextRight1:SetText("|cff808080" .. rank_info .. "|r")
+            else
+                GameTooltipTextRight1:SetText("")
+            end
             GameTooltipTextRight1:Show()
             GameTooltip:Show()
-        elseif tt.item then
-            GameTooltip:SetHyperlink(tt.item.link)
-            GameTooltip:Show()
-        else
-
+            return
         end
-    else
-        CleveRoids.Hooks.GameTooltip.SetAction(self, slot)
+
+        local current_item_data = CleveRoids.GetItem(action_name)
+        if current_item_data then
+            GameTooltip:SetHyperlink(current_item_data.link)
+            GameTooltip:Show()
+            return
+        end
+
+        if action_to_display_info.macro and type(action_to_display_info.macro) == "table" then
+            local nested_action_info = action_to_display_info.macro
+            local nested_action_name = nested_action_info.action
+
+            current_spell_data = CleveRoids.GetSpell(nested_action_name)
+            if current_spell_data then
+                GameTooltip:SetSpell(current_spell_data.spellSlot, current_spell_data.bookType)
+                local rank_info = current_spell_data.rank or (current_spell_data.highest and current_spell_data.highest.rank)
+                if rank_info and rank_info ~= "" then 
+                    GameTooltipTextRight1:SetText("|cff808080" .. rank_info .. "|r") 
+                else 
+                    GameTooltipTextRight1:SetText("") 
+                end
+                GameTooltipTextRight1:Show()
+                GameTooltip:Show()
+                return
+            end
+
+            current_item_data = CleveRoids.GetItem(nested_action_name)
+            if current_item_data then
+                GameTooltip:SetHyperlink(current_item_data.link)
+                GameTooltip:Show()
+                return
+            end
+        end
     end
+
+    CleveRoids.Hooks.GameTooltip.SetAction(self, slot)
 end
 
 CleveRoids.Hooks.PickupAction = PickupAction
