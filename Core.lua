@@ -525,25 +525,31 @@ function CleveRoids.ParseMsg(msg)
                     end
 
                     -- Split the args by / for multiple values
-                    for _, arg in CleveRoids.splitString(args, "/") do
-                        -- Remove quotes around conditional args and replace any _ with spaces, put the = operator back in if shorthand was used
-                        arg = string.gsub(arg, '"', "")
-                        arg = string.gsub(arg, "_", " ")
-                        arg = string.gsub(arg, "^#(%d+)$", "=#%1")
-                        arg = string.gsub(arg, "([^>~=<]+)#(%d+)", "%1=#%2")
+                    for _, arg_item in CleveRoids.splitString(args, "/") do
+                        local processed_arg = CleveRoids.Trim(arg_item)
 
-                        -- Get comparitive args
-                        local _, _, name, operator, amount = string.find(arg, "([^>~=<]*)([>~=<]+)(#?%d+)")
+                        processed_arg = string.gsub(processed_arg, '"', "")
+                        processed_arg = string.gsub(processed_arg, "_", " ")
+                        processed_arg = CleveRoids.Trim(processed_arg)
+                        
+                        local arg_for_find = processed_arg
+                        arg_for_find = string.gsub(arg_for_find, "^#(%d+)$", "=#%1")
+                        arg_for_find = string.gsub(arg_for_find, "([^>~=<]+)#(%d+)", "%1=#%2")
+
+                        local _, _, name, operator, amount = string.find(arg_for_find, "([^>~=<]*)([>~=<]+)(#?%d+)")
                         if not operator or not amount then
-                            table.insert(conditionals[condition], arg)
+                            table.insert(conditionals[condition], processed_arg)
                         else
-                            local amount, checkStacks = string.gsub(amount, "#", "")
+                            local name_to_use = (name and name ~= "") and name or conditionals.action 
+                            
+                            local final_amount_str, num_replacements = string.gsub(amount, "#", "")
+                            local should_check_stacks = (num_replacements == 1)
+
                             table.insert(conditionals[condition], {
-                                -- TODO: localize rank pattern?
-                                name = (name and name ~= "") and name or action,
+                                name = CleveRoids.Trim(name_to_use),
                                 operator = operator,
-                                amount = tonumber(amount),
-                                checkStacks = (checkStacks == 1)
+                                amount = tonumber(final_amount_str),
+                                checkStacks = should_check_stacks
                             })
                         end
                     end
