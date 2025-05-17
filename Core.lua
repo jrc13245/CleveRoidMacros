@@ -1016,6 +1016,19 @@ function CleveRoids.DoCastSequence(sequence)
     end
 end
 
+CleveRoids.DoConditionalCancelAura = function(msg)
+    local trimmedMsg = CleveRoids.Trim(msg or "")
+
+    if trimmedMsg == "" then
+        return false
+    end
+    if CleveRoids.DoWithConditionals(trimmedMsg, nil, CleveRoids.FixEmptyTarget, false, CleveRoids.CancelAura) then
+        return true
+    else
+        return false
+    end
+end
+
 function CleveRoids.OnUpdate(self)
     local time = GetTime()
     if CleveRoids.initializationTimer and time >= CleveRoids.initializationTimer then

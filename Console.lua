@@ -38,7 +38,7 @@ SlashCmdList.UNSHIFT = CleveRoids.DoUnshift
 SLASH_CANCELAURA1 = "/cancelaura"
 SLASH_CANCELAURA2 = "/unbuff"
 
-SlashCmdList.CANCELAURA = CleveRoids.CancelAura
+SlashCmdList.CANCELAURA = CleveRoids.DoConditionalCancelAura
 
 SLASH_STARTATTACK1 = "/startattack"
 
