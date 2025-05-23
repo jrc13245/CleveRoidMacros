@@ -162,7 +162,6 @@ end
 function CleveRoids.SendEventForAction(slot, event, ...)
     local _this = this
 
-    arg1, arg2, arg3, arg4, arg5, arg6, arg7 = unpack(arg)
 
     local page = floor((slot - 1) / NUM_ACTIONBAR_BUTTONS) + 1
     local pageSlot = slot - (page - 1) * NUM_ACTIONBAR_BUTTONS
