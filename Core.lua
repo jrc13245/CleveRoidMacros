@@ -866,7 +866,7 @@ function CleveRoids.DoUse(msg)
             -- we need to target the spell but targeting before cast counts as a target change
             -- and this is potentially bad for things like the OH swing timer reset bug
 
-            handled = CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, true, action)
+            handled = CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action)
         end
         if handled then break end
     end
