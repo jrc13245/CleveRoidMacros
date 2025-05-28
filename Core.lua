@@ -159,43 +159,101 @@ function CleveRoids.GetActiveAction(slot)
     return action and action.active
 end
 
-function CleveRoids.SendEventForAction(slot, event, ...)
-    local _this = this
+function CleveRoids.SendEventForAction(slot, event, ...) -- The '...' here declares it vararg
+    local old_this = this
 
+    local original_global_args = {}
+    for i = 1, 10 do
+        original_global_args[i] = _G["arg" .. i]
+    end
 
+    -- Attempt to use the 'arg' table (Lua 4 style) as a last resort
+    -- This is speculative and depends on WoW 1.12.1's specific Lua environment behavior
+    -- if '...' expressions are truly failing.
+    if type(arg) == "table" then
+        -- If 'arg' table exists and seems to hold varargs (e.g., from a Lua 4 compatibility layer)
+        local n_varargs_from_arg_table = arg.n or 0 -- Lua 4 style count
+        for i = 1, 10 do
+            if i <= n_varargs_from_arg_table then
+                _G["arg" .. i] = arg[i] -- Lua 4 style access
+            else
+                _G["arg" .. i] = nil
+            end
+        end
+    else
+        -- If 'arg' is not a table or doesn't conform, we have no way to access varargs
+        -- if '...' syntax failed. For now, clear the globals as a default.
+        -- This means ActionButton_OnEvent will not receive dynamic parameters.
+        for i = 1, 10 do
+            _G["arg" .. i] = nil
+        end
+        -- You might want to print an error or warning here that varargs couldn't be processed.
+        -- print("CleveRoids: Warning - Could not process variadic arguments.")
+    end
+
+    -- ... (rest of your logic for setting 'this' and calling ActionButton_OnEvent) ...
+    local button_to_call_event_on
     local page = floor((slot - 1) / NUM_ACTIONBAR_BUTTONS) + 1
     local pageSlot = slot - (page - 1) * NUM_ACTIONBAR_BUTTONS
 
-    -- Classic support.
-
     if slot >= 73 then
-        this = _G["BonusActionButton" .. pageSlot]
-        if this then ActionButton_OnEvent(event) end
-    else
-        if slot >= 61 then
-            this = _G["MultiBarBottomLeftButton" .. pageSlot]
-        elseif slot >= 49 then
-            this = _G["MultiBarBottomRightButton" .. pageSlot]
-        elseif slot >= 37 then
-            this = _G["MultiBarLeftButton" .. pageSlot]
-        elseif slot >= 25 then
-            this = _G["MultiBarRightButton" .. pageSlot]
-        else
-            this = nil
-        end
+        button_to_call_event_on = _G["BonusActionButton" .. pageSlot]
+    elseif slot >= 61 then
+        button_to_call_event_on = _G["MultiBarBottomLeftButton" .. pageSlot]
+    elseif slot >= 49 then
+        button_to_call_event_on = _G["MultiBarBottomRightButton" .. pageSlot]
+    elseif slot >= 37 then
+        button_to_call_event_on = _G["MultiBarLeftButton" .. pageSlot]
+    elseif slot >= 25 then
+        button_to_call_event_on = _G["MultiBarRightButton" .. pageSlot]
+    end
 
-        if this then ActionButton_OnEvent(event) end
+    if button_to_call_event_on then
+        this = button_to_call_event_on
+        ActionButton_OnEvent(event)
+    end
 
-        if page == CURRENT_ACTIONBAR_PAGE then
-            this = _G["ActionButton" .. pageSlot]
-            if this then ActionButton_OnEvent(event) end
+    if page == CURRENT_ACTIONBAR_PAGE then
+        local main_bar_button = _G["ActionButton" .. pageSlot]
+        if main_bar_button and main_bar_button ~= button_to_call_event_on then
+            this = main_bar_button
+            ActionButton_OnEvent(event)
+        elseif not button_to_call_event_on and main_bar_button then
+             this = main_bar_button
+             ActionButton_OnEvent(event)
         end
     end
 
-    this = _this
+    this = old_this
 
-    for _, fn in ipairs(CleveRoids.actionEventHandlers) do
-        fn(slot, event, unpack(arg))
+    for i = 1, 10 do
+        _G["arg" .. i] = original_global_args[i]
+    end
+
+    if type(arg) == "table" and arg.n then
+
+        if arg.n == 0 then
+            for _, fn_h in ipairs(CleveRoids.actionEventHandlers) do fn_h(slot, event) end
+        elseif arg.n == 1 then
+            for _, fn_h in ipairs(CleveRoids.actionEventHandlers) do fn_h(slot, event, arg[1]) end
+        elseif arg.n == 2 then
+            for _, fn_h in ipairs(CleveRoids.actionEventHandlers) do fn_h(slot, event, arg[1], arg[2]) end
+        elseif arg.n == 3 then
+            for _, fn_h in ipairs(CleveRoids.actionEventHandlers) do fn_h(slot, event, arg[1], arg[2], arg[3]) end
+        elseif arg.n == 4 then
+            for _, fn_h in ipairs(CleveRoids.actionEventHandlers) do fn_h(slot, event, arg[1], arg[2], arg[3], arg[4]) end
+        elseif arg.n == 5 then
+            for _, fn_h in ipairs(CleveRoids.actionEventHandlers) do fn_h(slot, event, arg[1], arg[2], arg[3], arg[4], arg[5]) end
+        elseif arg.n == 6 then
+            for _, fn_h in ipairs(CleveRoids.actionEventHandlers) do fn_h(slot, event, arg[1], arg[2], arg[3], arg[4], arg[5], arg[6]) end
+        else
+            for _, fn_h in ipairs(CleveRoids.actionEventHandlers) do fn_h(slot, event, arg[1], arg[2], arg[3], arg[4], arg[5], arg[6], arg[7]) end
+        end
+    else
+
+        for _, fn_h in ipairs(CleveRoids.actionEventHandlers) do
+            fn_h(slot, event)
+        end
     end
 end
 
