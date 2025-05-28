@@ -159,7 +159,7 @@ function CleveRoids.GetActiveAction(slot)
     return action and action.active
 end
 
-function CleveRoids.SendEventForAction(slot, event, ...) -- The '...' here declares it vararg
+function CleveRoids.SendEventForAction(slot, event, ...)
     local old_this = this
 
     local original_global_args = {}
@@ -167,31 +167,22 @@ function CleveRoids.SendEventForAction(slot, event, ...) -- The '...' here decla
         original_global_args[i] = _G["arg" .. i]
     end
 
-    -- Attempt to use the 'arg' table (Lua 4 style) as a last resort
-    -- This is speculative and depends on WoW 1.12.1's specific Lua environment behavior
-    -- if '...' expressions are truly failing.
     if type(arg) == "table" then
-        -- If 'arg' table exists and seems to hold varargs (e.g., from a Lua 4 compatibility layer)
-        local n_varargs_from_arg_table = arg.n or 0 -- Lua 4 style count
+
+        local n_varargs_from_arg_table = arg.n or 0
         for i = 1, 10 do
             if i <= n_varargs_from_arg_table then
-                _G["arg" .. i] = arg[i] -- Lua 4 style access
+                _G["arg" .. i] = arg[i]
             else
                 _G["arg" .. i] = nil
             end
         end
     else
-        -- If 'arg' is not a table or doesn't conform, we have no way to access varargs
-        -- if '...' syntax failed. For now, clear the globals as a default.
-        -- This means ActionButton_OnEvent will not receive dynamic parameters.
         for i = 1, 10 do
             _G["arg" .. i] = nil
         end
-        -- You might want to print an error or warning here that varargs couldn't be processed.
-        -- print("CleveRoids: Warning - Could not process variadic arguments.")
     end
 
-    -- ... (rest of your logic for setting 'this' and calling ActionButton_OnEvent) ...
     local button_to_call_event_on
     local page = floor((slot - 1) / NUM_ACTIONBAR_BUTTONS) + 1
     local pageSlot = slot - (page - 1) * NUM_ACTIONBAR_BUTTONS
