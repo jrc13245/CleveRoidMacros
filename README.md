@@ -7,7 +7,7 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 
 ## Installation
 ### Manual
-1. Download a zip from the green Code button or by clicking [here](https://github.com/bhhandley/CleveRoidMacros/archive/refs/heads/main.zip)
+1. Download a zip from the green Code button or by clicking [here](https://github.com/jrc13245/CleveRoidMacros/archive/refs/heads/main.zip)
 2. Unzip the file and place the folder into your `Interface/Addons` folder.
 3. Rename the `CleveRoidMacros-main` folder to `CleveRoidMacros`
 4. Check that it is enabled in your addon list in-game.  
@@ -16,7 +16,7 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 ### Turtle WoW Launcher / GitAddonsManager
 1. Open either application
 2. Click the Add button
-3. Paste the url `https://github.com/bhhandley/CleveRoidMacros`
+3. Paste the url `https://github.com/jrc13245/CleveRoidMacros`
 4. Download and keep up to date
 
 --- 
