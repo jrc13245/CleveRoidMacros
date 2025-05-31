@@ -957,7 +957,7 @@ CleveRoids.Keywords = {
 
     noinrange = function(conditionals)
         if not IsSpellInRange then return end
-        return And(conditionals.inrange, function(spellName)
+        return And(conditionals.noinrange, function(spellName)
             return IsSpellInRange(spellName or conditionals.action, conditionals.target) == 0
         end)
     end,
