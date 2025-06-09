@@ -43,39 +43,19 @@ SlashCmdList.CANCELAURA = CleveRoids.DoConditionalCancelAura
 SLASH_STARTATTACK1 = "/startattack"
 
 SlashCmdList.STARTATTACK = function(msg)
-    if not UnitExists("target") or UnitIsDead("target") then TargetNearestEnemy() end
-
-    if not CleveRoids.CurrentSpell.autoAttack and not CleveRoids.CurrentSpell.autoAttackLock and UnitExists("target") and UnitCanAttack("player","target") then
-        CleveRoids.CurrentSpell.autoAttackLock = true
-
-        -- time a reset in case an attack could not be started.
-        -- handled in CleveRoids.OnUpdate()
-        CleveRoids.autoAttackLockElapsed = GetTime()
-        AttackTarget()
-    end
+    CleveRoids.DoStartAttack(msg or "")
 end
 
 SLASH_STOPATTACK1 = "/stopattack"
 
 SlashCmdList.STOPATTACK = function(msg)
-    if CleveRoids.CurrentSpell.autoAttack and UnitExists("target") then
-        AttackTarget()
-        CleveRoids.CurrentSpell.autoAttack = false
-    end
+    CleveRoids.DoStopAttack(msg or "")
 end
 
 SLASH_STOPCASTING1 = "/stopcasting"
 
-SlashCmdList.STOPCASTING = SpellStopCasting
-
-CleveRoids.Hooks.CAST_SlashCmd = SlashCmdList.CAST
-CleveRoids.CAST_SlashCmd = function(msg)
-    -- get in there first, i.e do a PreHook
-    if CleveRoids.DoCast(msg) then
-        return
-    end
-    -- if there was nothing for us to handle pass it to the original
-    CleveRoids.Hooks.CAST_SlashCmd(msg)
+SlashCmdList.STOPCASTING = function(msg)
+    CleveRoids.DoStopCasting(msg or "")
 end
 
 SlashCmdList.CAST = CleveRoids.CAST_SlashCmd
