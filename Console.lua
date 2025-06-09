@@ -40,34 +40,70 @@ SLASH_CANCELAURA2 = "/unbuff"
 
 SlashCmdList.CANCELAURA = CleveRoids.DoConditionalCancelAura
 
-SLASH_STARTATTACK1 = "/startattack"
-
-SlashCmdList.STARTATTACK = function(msg)
+-- Define original implementations before hooking them.
+-- This ensures we have a fallback for non-conditional use.
+local StartAttack = function(msg)
     if not UnitExists("target") or UnitIsDead("target") then TargetNearestEnemy() end
-
     if not CleveRoids.CurrentSpell.autoAttack and not CleveRoids.CurrentSpell.autoAttackLock and UnitExists("target") and UnitCanAttack("player","target") then
         CleveRoids.CurrentSpell.autoAttackLock = true
-
-        -- time a reset in case an attack could not be started.
-        -- handled in CleveRoids.OnUpdate()
         CleveRoids.autoAttackLockElapsed = GetTime()
         AttackTarget()
     end
 end
 
-SLASH_STOPATTACK1 = "/stopattack"
-
-SlashCmdList.STOPATTACK = function(msg)
+local StopAttack = function(msg)
     if CleveRoids.CurrentSpell.autoAttack and UnitExists("target") then
         AttackTarget()
         CleveRoids.CurrentSpell.autoAttack = false
     end
 end
 
-SLASH_STOPCASTING1 = "/stopcasting"
+-- Register slash commands and assign original handlers.
+-- These will be hooked immediately after.
+SLASH_STARTATTACK1 = "/startattack"
+SlashCmdList.STARTATTACK = StartAttack
 
+SLASH_STOPATTACK1 = "/stopattack"
+SlashCmdList.STOPATTACK = StopAttack
+
+SLASH_STOPCASTING1 = "/stopcasting"
 SlashCmdList.STOPCASTING = SpellStopCasting
 
+----------------------------------
+-- HOOK DEFINITIONS START
+----------------------------------
+
+-- /startattack hook
+CleveRoids.Hooks.STARTATTACK_SlashCmd = SlashCmdList.STARTATTACK
+SlashCmdList.STARTATTACK = function(msg)
+    msg = msg or ""
+    if CleveRoids.DoConditionalStartAttack(msg) then
+        return
+    end
+    CleveRoids.Hooks.STARTATTACK_SlashCmd(msg)
+end
+
+-- /stopattack hook
+CleveRoids.Hooks.STOPATTACK_SlashCmd = SlashCmdList.STOPATTACK
+SlashCmdList.STOPATTACK = function(msg)
+    msg = msg or ""
+    if CleveRoids.DoConditionalStopAttack(msg) then
+        return
+    end
+    CleveRoids.Hooks.STOPATTACK_SlashCmd(msg)
+end
+
+-- /stopcasting hook
+CleveRoids.Hooks.STOPCASTING_SlashCmd = SlashCmdList.STOPCASTING
+SlashCmdList.STOPCASTING = function(msg)
+    msg = msg or ""
+    if CleveRoids.DoConditionalStopCasting(msg) then
+        return
+    end
+    CleveRoids.Hooks.STOPCASTING_SlashCmd()
+end
+
+-- /cast hook (Restored)
 CleveRoids.Hooks.CAST_SlashCmd = SlashCmdList.CAST
 CleveRoids.CAST_SlashCmd = function(msg)
     -- get in there first, i.e do a PreHook
@@ -77,7 +113,6 @@ CleveRoids.CAST_SlashCmd = function(msg)
     -- if there was nothing for us to handle pass it to the original
     CleveRoids.Hooks.CAST_SlashCmd(msg)
 end
-
 SlashCmdList.CAST = CleveRoids.CAST_SlashCmd
 
 CleveRoids.Hooks.TARGET_SlashCmd = SlashCmdList.TARGET
