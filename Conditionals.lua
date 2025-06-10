@@ -596,6 +596,28 @@ CleveRoids.Keywords = {
         end)
     end,
 
+    nostance = function(conditionals)
+        local i = CleveRoids.GetCurrentShapeshiftIndex()
+        local forbiddenStances = conditionals.nostance
+        if type(forbiddenStances) ~= "table" then
+            return i == 0
+        end
+        return And(forbiddenStances, function (v)
+            return (i ~= tonumber(v))
+        end)
+    end,
+
+    noform = function(conditionals)
+        local i = CleveRoids.GetCurrentShapeshiftIndex()
+        local forbiddenForms = conditionals.noform
+        if type(forbiddenForms) ~= "table" then
+            return i == 0
+        end
+        return And(forbiddenForms, function (v)
+            return (i ~= tonumber(v))
+        end)
+    end,
+
     form = function(conditionals)
         local i = CleveRoids.GetCurrentShapeshiftIndex()
         return Or(conditionals.form, function (v)

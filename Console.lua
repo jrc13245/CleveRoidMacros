@@ -77,10 +77,11 @@ SlashCmdList.STOPCASTING = SpellStopCasting
 CleveRoids.Hooks.STARTATTACK_SlashCmd = SlashCmdList.STARTATTACK
 SlashCmdList.STARTATTACK = function(msg)
     msg = msg or ""
-    if CleveRoids.DoConditionalStartAttack(msg) then
-        return
+    if string.find(msg, "%[") then
+        CleveRoids.DoConditionalStartAttack(msg)
+    else
+        CleveRoids.Hooks.STARTATTACK_SlashCmd(msg)
     end
-    CleveRoids.Hooks.STARTATTACK_SlashCmd(msg)
 end
 
 -- /stopattack hook

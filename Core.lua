@@ -904,7 +904,7 @@ function CleveRoids.DoConditionalStartAttack(msg)
             break
         end
     end
-    return true
+    return handled
 end
 
 -- Attempts to conditionally stop an attack. Returns false if no conditionals are found.
@@ -925,7 +925,7 @@ function CleveRoids.DoConditionalStopAttack(msg)
             break
         end
     end
-    return true
+    return handled
 end
 
 -- Attempts to conditionally stop casting. Returns false if no conditionals are found.
@@ -943,7 +943,7 @@ function CleveRoids.DoConditionalStopCasting(msg)
             break
         end
     end
-    return true
+    return handled
 end
 
 -- Attempts to use or equip an item from the player's inventory by a  set of conditionals
