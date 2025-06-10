@@ -88,20 +88,28 @@ end
 CleveRoids.Hooks.STOPATTACK_SlashCmd = SlashCmdList.STOPATTACK
 SlashCmdList.STOPATTACK = function(msg)
     msg = msg or ""
-    if CleveRoids.DoConditionalStopAttack(msg) then
-        return
+    if string.find(msg, "%[") then
+        -- If conditionals are present, let the function handle it.
+        -- It will only stop the attack if the conditions are met.
+        CleveRoids.DoConditionalStopAttack(msg)
+    else
+        -- If no conditionals, run the original command.
+        CleveRoids.Hooks.STOPATTACK_SlashCmd(msg)
     end
-    CleveRoids.Hooks.STOPATTACK_SlashCmd(msg)
 end
 
 -- /stopcasting hook
 CleveRoids.Hooks.STOPCASTING_SlashCmd = SlashCmdList.STOPCASTING
 SlashCmdList.STOPCASTING = function(msg)
     msg = msg or ""
-    if CleveRoids.DoConditionalStopCasting(msg) then
-        return
+    if string.find(msg, "%[") then
+        -- If conditionals are present, let the function handle it.
+        -- It will only stop the cast if the conditions are met.
+        CleveRoids.DoConditionalStopCasting(msg)
+    else
+        -- If no conditionals, run the original command.
+        CleveRoids.Hooks.STOPCASTING_SlashCmd()
     end
-    CleveRoids.Hooks.STOPCASTING_SlashCmd()
 end
 
 -- /cast hook (Restored)
