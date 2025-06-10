@@ -889,6 +889,7 @@ function CleveRoids.DoConditionalStartAttack(msg)
 
     local handled = false
     local action = function()
+        if not UnitExists("target") or UnitIsDead("target") then TargetNearestEnemy() end
         if not CleveRoids.CurrentSpell.autoAttack and not CleveRoids.CurrentSpell.autoAttackLock and UnitExists("target") and UnitCanAttack("player", "target") then
             CleveRoids.CurrentSpell.autoAttackLock = true
             CleveRoids.autoAttackLockElapsed = GetTime()
@@ -898,12 +899,12 @@ function CleveRoids.DoConditionalStartAttack(msg)
 
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
         -- We pass 'nil' for the hook, so DoWithConditionals does nothing if it fails to parse conditionals.
-        if CleveRoids.DoWithConditionals(v, nil, CleveRoids.FixEmptyTarget, true, action) then
+        if CleveRoids.DoWithConditionals(v, nil, CleveRoids.FixEmptyTarget, false, action) then
             handled = true
             break
         end
     end
-    return handled
+    return true
 end
 
 -- Attempts to conditionally stop an attack. Returns false if no conditionals are found.
@@ -924,7 +925,7 @@ function CleveRoids.DoConditionalStopAttack(msg)
             break
         end
     end
-    return handled
+    return true
 end
 
 -- Attempts to conditionally stop casting. Returns false if no conditionals are found.
@@ -942,7 +943,7 @@ function CleveRoids.DoConditionalStopCasting(msg)
             break
         end
     end
-    return handled
+    return true
 end
 
 -- Attempts to use or equip an item from the player's inventory by a  set of conditionals
