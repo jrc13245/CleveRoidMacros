@@ -629,7 +629,7 @@ CleveRoids.Keywords = {
         if type(conditionals.mod) ~= "table" then
             return CleveRoids.kmods.mod()
         end
-        return And(conditionals.mod, function(mod)
+        return Or(conditionals.mod, function(mod)
             return CleveRoids.kmods[mod]()
         end)
     end,
@@ -671,7 +671,7 @@ CleveRoids.Keywords = {
 
     casting = function(conditionals)
         if type(conditionals.casting) ~= "table" then return CleveRoids.CheckSpellCast(conditionals.target, "") end
-        return And(conditionals.casting, function (spell)
+        return Or(conditionals.casting, function (spell)
             return CleveRoids.CheckSpellCast(conditionals.target, spell)
         end)
     end,
@@ -686,7 +686,7 @@ CleveRoids.Keywords = {
     zone = function(conditionals)
         local zone = GetRealZoneText()
         local sub_zone = GetSubZoneText()
-        return And(conditionals.zone, function (v)
+        return Or(conditionals.zone, function (v)
             return (sub_zone ~= "" and (v == sub_zone) or (v == zone))
         end)
     end,
@@ -720,7 +720,7 @@ CleveRoids.Keywords = {
     end,
 
     reactive = function(conditionals)
-        return And(conditionals.reactive, function (v)
+        return Or(conditionals.reactive, function (v)
             return CleveRoids.IsReactiveUsable(v)
         end)
     end,
@@ -732,7 +732,7 @@ CleveRoids.Keywords = {
     end,
 
     member = function(conditionals)
-        return And(conditionals.member, function(v)
+        return Or(conditionals.member, function(v)
             return
                 CleveRoids.IsTargetInGroupType(conditionals.target, "party")
                 or CleveRoids.IsTargetInGroupType(conditionals.target, "raid")
@@ -759,7 +759,7 @@ CleveRoids.Keywords = {
         if type(conditionals.group) ~= "table" then
             conditionals.group = { "party", "raid" }
         end
-        return And(conditionals.group, function(groups)
+        return Or(conditionals.group, function(groups)
             if group == "party" then
                 return GetNumPartyMembers() > 0
             elseif group == "raid" then
@@ -775,7 +775,7 @@ CleveRoids.Keywords = {
     end,
 
     buff = function(conditionals)
-        return And(conditionals.buff, function(v)
+        return Or(conditionals.buff, function(v)
             return CleveRoids.ValidateUnitBuff(conditionals.target, v)
         end)
     end,
@@ -787,7 +787,7 @@ CleveRoids.Keywords = {
     end,
 
     debuff = function(conditionals)
-        return And(conditionals.debuff, function(v)
+        return Or(conditionals.debuff, function(v)
             return CleveRoids.ValidateUnitDebuff(conditionals.target, v)
         end)
     end,
@@ -799,7 +799,7 @@ CleveRoids.Keywords = {
     end,
 
     mybuff = function(conditionals)
-        return And(conditionals.mybuff, function(v)
+        return Or(conditionals.mybuff, function(v)
             return CleveRoids.ValidatePlayerBuff(v)
         end)
     end,
@@ -811,7 +811,7 @@ CleveRoids.Keywords = {
     end,
 
     mydebuff = function(conditionals)
-        return And(conditionals.mydebuff, function(v)
+        return Or(conditionals.mydebuff, function(v)
             return CleveRoids.ValidatePlayerDebuff(v)
         end)
     end,
@@ -913,13 +913,13 @@ CleveRoids.Keywords = {
     end,
 
     notype = function(conditionals)
-        return And(conditionals.type, function(unittype)
+        return And(conditionals.notype, function(unittype)
             return not CleveRoids.ValidateCreatureType(unittype, conditionals.target)
         end)
     end,
 
     cooldown = function(conditionals)
-        return And(conditionals.cooldown,function (v)
+        return Or(conditionals.cooldown,function (v)
             return CleveRoids.ValidateCooldown(v, true)
         end)
     end,
@@ -951,7 +951,7 @@ CleveRoids.Keywords = {
     end,
 
     targeting = function(conditionals)
-        return And(conditionals.targeting, function (unit)
+        return Or(conditionals.targeting, function (unit)
             return (UnitIsUnit("targettarget", unit) == 1)
         end)
     end,
@@ -992,7 +992,7 @@ CleveRoids.Keywords = {
 
     nocombo = function(conditionals)
         return And(conditionals.nocombo, function(args)
-            return CleveRoids.ValidateComboPoints(args.operator, args.amount)
+            return not CleveRoids.ValidateComboPoints(args.operator, args.amount)
         end)
     end,
 
