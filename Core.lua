@@ -358,27 +358,44 @@ function CleveRoids.CreateActionInfo(action, conditionals)
     local spell = CleveRoids.GetSpell(text)
     local item, macroName, macro, macroTooltip, actionType, texture
 
-
-    if not spell then
-        item = CleveRoids.GetItem(text)
-    end
-    if not item then
-        macroName = CleveRoids.GetMacroNameFromAction(text)
-        macro = CleveRoids.GetMacro(macroName)
-        macroTooltip = (macro and macro.actions) and macro.actions.tooltip
-    end
-
-    if spell then
-        actionType = "spell"
-        texture = spell.texture or CleveRoids.unknownTexture
-    elseif item then
+    -- NEW: Check if the action is a slot number
+    local slotId = tonumber(text)
+    if slotId and slotId >= 1 and slotId <= 19 then
         actionType = "item"
-        texture = (item and item.texture) or CleveRoids.unknownTexture
-    elseif macro then
-        actionType = "macro"
-        texture = (macro.actions and macro.actions.tooltip and macro.actions.tooltip.texture)
-                    or (macro and macro.texture)
-                    or CleveRoids.unknownTexture
+        -- Use the most reliable method first to get the texture for an equipped item.
+        local itemTexture = GetInventoryItemTexture("player", slotId)
+        
+        -- Check if the texture was successfully found.
+        if itemTexture then
+            texture = itemTexture
+        else
+            -- If the primary method fails, fall back to the unknown texture.
+            -- This prevents errors if the slot is empty or the item data is unusual.
+            texture = CleveRoids.unknownTexture
+        end
+    else
+        -- Original logic for named items and spells
+        if not spell then
+            item = CleveRoids.GetItem(text)
+        end
+        if not item then
+            macroName = CleveRoids.GetMacroNameFromAction(text)
+            macro = CleveRoids.GetMacro(macroName)
+            macroTooltip = (macro and macro.actions) and macro.actions.tooltip
+        end
+
+        if spell then
+            actionType = "spell"
+            texture = spell.texture or CleveRoids.unknownTexture
+        elseif item then
+            actionType = "item"
+            texture = (item and item.texture) or CleveRoids.unknownTexture
+        elseif macro then
+            actionType = "macro"
+            texture = (macro.actions and macro.actions.tooltip and macro.actions.tooltip.texture)
+                        or (macro and macro.texture)
+                        or CleveRoids.unknownTexture
+        end
     end
 
     local info = {
@@ -953,6 +970,14 @@ function CleveRoids.DoUse(msg)
     local handled = false
 
     local action = function(msg)
+        -- NEW: Try to interpret the message as a direct inventory slot ID first.
+        local slotId = tonumber(msg)
+        if slotId and slotId >= 1 and slotId <= 19 then -- Character slots are 1-19
+            UseInventoryItem(slotId)
+            return -- Exit after using the item by slot.
+        end
+
+        -- Original logic: if it's not a slot number, try to resolve by name.
         local item = CleveRoids.GetItem(msg)
 
         if item and item.inventoryID then
@@ -971,19 +996,18 @@ function CleveRoids.DoUse(msg)
         local _,e = string.find(v,"%]")
         if e then subject = CleveRoids.Trim(string.sub(v,e+1)) end
 
-        if CleveRoids.GetSpell(subject) then
+        -- If the subject is not a number, check if it's a spell.
+        if (not tonumber(subject)) and CleveRoids.GetSpell(subject) then
             handled = CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, not CleveRoids.hasSuperwow, CastSpellByName)
         else
-            -- TODO false needs checking here, for things like juju power we have an issue
-            -- we need to target the spell but targeting before cast counts as a target change
-            -- and this is potentially bad for things like the OH swing timer reset bug
-
+            -- Otherwise, treat it as an item (by name or slot ID).
             handled = CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action)
         end
         if handled then break end
     end
     return handled
 end
+
 
 function CleveRoids.EquipBagItem(msg, offhand)
     local item = CleveRoids.GetItem(msg)
@@ -1169,7 +1193,6 @@ function CleveRoids.OnUpdate(self)
         if sequence.index > 1 and sequence.reset.secs and (time - sequence.lastUpdate) >= sequence.reset.secs then
             CleveRoids.ResetSequence(sequence)
         end
-        -- sequence.active = CleveRoids.TestAction(sequence.cmd, sequence.args)
     end
 
     for guid,cast in pairs(CleveRoids.spell_tracking) do
@@ -1178,10 +1201,15 @@ function CleveRoids.OnUpdate(self)
         end
     end
     CleveRoids.TestForAllActiveActions()
-    -- CleveRoids.IndexActionBars()
 end
 
+-- Initialize the nested table for the GameTooltip hooks if it doesn't exist
+if not CleveRoids.Hooks.GameTooltip then CleveRoids.Hooks.GameTooltip = {} end
+
+-- Save the original GameTooltip.SetAction function before we override it
 CleveRoids.Hooks.GameTooltip.SetAction = GameTooltip.SetAction
+
+-- Now, define our custom version of the function
 function GameTooltip.SetAction(self, slot)
     local actions = CleveRoids.GetAction(slot)
 
@@ -1196,7 +1224,17 @@ function GameTooltip.SetAction(self, slot)
 
     if action_to_display_info and action_to_display_info.action then
         local action_name = action_to_display_info.action
-        
+
+        -- NEW: Check if action is a slot ID for tooltip
+        local slotId = tonumber(action_name)
+        if slotId and slotId >= 1 and slotId <= 19 then
+            -- Use the more specific SetInventoryItem function to prevent conflicts with other addons.
+            GameTooltip:SetInventoryItem("player", slotId)
+            GameTooltip:Show()
+            return
+        end
+        -- End new logic
+
         local current_spell_data = CleveRoids.GetSpell(action_name)
         if current_spell_data then
             GameTooltip:SetSpell(current_spell_data.spellSlot, current_spell_data.bookType)
@@ -1213,7 +1251,15 @@ function GameTooltip.SetAction(self, slot)
 
         local current_item_data = CleveRoids.GetItem(action_name)
         if current_item_data then
-            GameTooltip:SetHyperlink(current_item_data.link)
+            -- Use specific functions based on where the item is located.
+            if current_item_data.inventoryID then
+                GameTooltip:SetInventoryItem("player", current_item_data.inventoryID)
+            elseif current_item_data.bagID and current_item_data.slot then
+                GameTooltip:SetBagItem(current_item_data.bagID, current_item_data.slot)
+            else
+                -- Fallback to the original method if location is unknown.
+                GameTooltip:SetHyperlink(current_item_data.link)
+            end
             GameTooltip:Show()
             return
         end
@@ -1226,10 +1272,10 @@ function GameTooltip.SetAction(self, slot)
             if current_spell_data then
                 GameTooltip:SetSpell(current_spell_data.spellSlot, current_spell_data.bookType)
                 local rank_info = current_spell_data.rank or (current_spell_data.highest and current_spell_data.highest.rank)
-                if rank_info and rank_info ~= "" then 
-                    GameTooltipTextRight1:SetText("|cff808080" .. rank_info .. "|r") 
-                else 
-                    GameTooltipTextRight1:SetText("") 
+                if rank_info and rank_info ~= "" then
+                    GameTooltipTextRight1:SetText("|cff808080" .. rank_info .. "|r")
+                else
+                    GameTooltipTextRight1:SetText("")
                 end
                 GameTooltipTextRight1:Show()
                 GameTooltip:Show()
@@ -1238,15 +1284,23 @@ function GameTooltip.SetAction(self, slot)
 
             current_item_data = CleveRoids.GetItem(nested_action_name)
             if current_item_data then
-                GameTooltip:SetHyperlink(current_item_data.link)
+                 if current_item_data.inventoryID then
+                    GameTooltip:SetInventoryItem("player", current_item_data.inventoryID)
+                elseif current_item_data.bagID and current_item_data.slot then
+                    GameTooltip:SetBagItem(current_item_data.bagID, current_item_data.slot)
+                else
+                    GameTooltip:SetHyperlink(current_item_data.link)
+                end
                 GameTooltip:Show()
                 return
             end
         end
     end
 
+    -- If none of our custom logic handled it, call the original function we saved earlier.
     CleveRoids.Hooks.GameTooltip.SetAction(self, slot)
 end
+
 
 CleveRoids.Hooks.PickupAction = PickupAction
 function PickupAction(slot)
@@ -1327,6 +1381,12 @@ function GetActionCooldown(slot)
     local actions = CleveRoids.GetAction(slot)
     if actions and actions.active then
         local a = actions.active
+
+        local slotId = tonumber(a.action)
+        if slotId and slotId >= 1 and slotId <= 19 then
+            return GetInventoryItemCooldown("player", slotId)
+        end
+
         if a.spell then
             return GetSpellCooldown(a.spell.spellSlot, a.spell.bookType)
         elseif a.item then
@@ -1347,6 +1407,12 @@ function GetActionCount(slot)
     local action = CleveRoids.GetAction(slot)
     local count
     if action and action.active then
+
+        local slotId = tonumber(action.active.action)
+        if slotId and slotId >= 1 and slotId <= 19 then
+            return GetInventoryItemCount("player", slotId)
+        end
+
         if action.active.item then
             count = action.active.item.count
         elseif action.active.spell and action.active.spell.reagent then
@@ -1362,20 +1428,30 @@ CleveRoids.Hooks.IsConsumableAction = IsConsumableAction
 function IsConsumableAction(slot)
     local action = CleveRoids.GetAction(slot)
     if action and action.active then
+
+        local slotId = tonumber(action.active.action)
+        if slotId and slotId >= 1 and slotId <= 19 then
+            local _, count = GetInventoryItemCount("player", slotId)
+            if count and count > 0 then return 1 end
+        end
+
         if action.active.item and
             (CleveRoids.countedItemTypes[action.active.item.type]
             or CleveRoids.countedItemTypes[action.active.item.name])
         then
             return 1
-        elseif action.active.spell and action.active.spell.reagent then
+        end
+
+
+        if action.active.spell and action.active.spell.reagent then
             return 1
-        else
-            return
         end
     end
 
     return CleveRoids.Hooks.IsConsumableAction(slot)
 end
+
+
 
 
 -- Dummy Frame to hook ADDON_LOADED event in order to preserve compatiblity with other AddOns like SuperMacro
@@ -1581,6 +1657,14 @@ function CleveRoids.Frame:BAG_UPDATE()
     if (now - (CleveRoids.lastItemIndexTime or 0)) > 1.0 then
         CleveRoids.lastItemIndexTime = now
         CleveRoids.IndexItems()
+        
+        -- Directly clear all relevant caches and force a UI refresh for all buttons.
+        CleveRoids.Actions = {}
+        CleveRoids.Macros = {}
+        CleveRoids.ParsedMsg = {}
+        for i=1, 120 do
+            CleveRoids.SendEventForAction(i, "ACTIONBAR_SLOT_CHANGED", i)
+        end
     end
 end
 
@@ -1594,6 +1678,14 @@ function CleveRoids.Frame:UNIT_INVENTORY_CHANGED()
     if (now - (CleveRoids.lastItemIndexTime or 0)) > 1.0 then
         CleveRoids.lastItemIndexTime = now
         CleveRoids.IndexItems()
+
+        -- Directly clear all relevant caches and force a UI refresh for all buttons.
+        CleveRoids.Actions = {}
+        CleveRoids.Macros = {}
+        CleveRoids.ParsedMsg = {}
+        for i=1, 120 do
+            CleveRoids.SendEventForAction(i, "ACTIONBAR_SLOT_CHANGED", i)
+        end
     end
 end
 
