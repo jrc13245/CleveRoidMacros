@@ -966,7 +966,7 @@ end
 -- Also checks if a condition is a spell so that you can mix item and spell use
 -- msg: The raw message intercepted from a /use or /equip command
 function CleveRoids.DoUse(msg)
-    local anyHandled = false
+    local Handled = false
 
     local action = function(msg)
         -- NEW: Try to interpret the message as a direct inventory slot ID first.
@@ -995,20 +995,20 @@ function CleveRoids.DoUse(msg)
         local _,e = string.find(v,"%]")
         if e then subject = CleveRoids.Trim(string.sub(v,e+1)) end
 
-        local handledThisIteration = false
+        local Handled = false
         -- If the subject is not a number, check if it's a spell.
         if (not tonumber(subject)) and CleveRoids.GetSpell(subject) then
-            handledThisIteration = CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, not CleveRoids.hasSuperwow, CastSpellByName)
+            Handled = CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, not CleveRoids.hasSuperwow, CastSpellByName)
         else
             -- Otherwise, treat it as an item (by name or slot ID).
-            handledThisIteration = CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action)
+            Handled = CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action)
         end
         
-        if handledThisIteration then 
-            anyHandled = true
+        if Handled then 
+            Handled = true
         end
     end
-    return anyHandled
+    return Handled
 end
 
 
