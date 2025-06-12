@@ -848,6 +848,7 @@ function CleveRoids.DoCast(msg)
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
         if CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, not CleveRoids.hasSuperwow, CastSpellByName) then
             handled = true -- we parsed at least one command
+            break
         end
     end
     return handled
@@ -879,6 +880,7 @@ function CleveRoids.DoTarget(msg)
         end
         if CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.TARGET_SlashCmd, CleveRoids.FixEmptyTargetSetTarget, false, action) then
             handled = true
+            break
         end
     end
     return handled
@@ -892,6 +894,7 @@ function CleveRoids.DoPetAttack(msg)
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
         if CleveRoids.DoWithConditionals(v, PetAttack, CleveRoids.FixEmptyTarget, true, PetAttack) then
             handled = true
+            break
         end
     end
     return handled
@@ -915,6 +918,7 @@ function CleveRoids.DoConditionalStartAttack(msg)
         -- We pass 'nil' for the hook, so DoWithConditionals does nothing if it fails to parse conditionals.
         if CleveRoids.DoWithConditionals(v, nil, CleveRoids.FixEmptyTarget, false, action) then
             handled = true
+            break
         end
     end
     return handled
@@ -935,6 +939,7 @@ function CleveRoids.DoConditionalStopAttack(msg)
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
         if CleveRoids.DoWithConditionals(v, nil, CleveRoids.FixEmptyTarget, false, action) then
             handled = true
+            break
         end
     end
     return handled
@@ -952,6 +957,7 @@ function CleveRoids.DoConditionalStopCasting(msg)
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
         if CleveRoids.DoWithConditionals(v, nil, CleveRoids.FixEmptyTarget, false, action) then
             handled = true
+            break
         end
     end
     return handled
@@ -997,6 +1003,7 @@ function CleveRoids.DoUse(msg)
             -- Otherwise, treat it as an item (by name or slot ID).
             handled = CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action)
         end
+        if handled then break end
     end
     return handled
 end
@@ -1036,6 +1043,7 @@ function CleveRoids.DoEquipMainhand(msg)
 
         if CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action) then
             handled = true
+            break
         end
     end
     return handled
@@ -1053,6 +1061,7 @@ function CleveRoids.DoEquipOffhand(msg)
 
         if CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action) then
             handled = true
+            break
         end
     end
     return handled
@@ -1072,6 +1081,7 @@ function CleveRoids.DoUnshift(msg)
         handled = false
         if CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action) then
             handled = true
+            break
         end
     end
 
@@ -1098,6 +1108,7 @@ end
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(CleveRoids.Trim(msg))) do
         if CleveRoids.DoWithConditionals(msg, nil, nil, not CleveRoids.hasSuperwow, "STOPMACRO") then
             handled = true -- we parsed at least one command
+            break
         end
     end
     return handled
