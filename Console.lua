@@ -115,17 +115,21 @@ end
 -- /cast hook (Modified for multi-spell/multi-conditional execution)
 CleveRoids.Hooks.CAST_SlashCmd = SlashCmdList.CAST
 CleveRoids.CAST_SlashCmd = function(msg)
+    local parts = CleveRoids.splitStringIgnoringQuotes(msg)
 
-    local handled_by_addon = CleveRoids.DoWithConditionals(
-        msg,                              -- Pass the full message string for parsing
-        CleveRoids.Hooks.CAST_SlashCmd,   -- Pass the original hook for fallback if addon cannot handle
-        CleveRoids.FixEmptyTarget,
-        not CleveRoids.hasSuperwow,
-        CastSpellByName
-    )
+    for _, part_msg in pairs(parts) do
 
-    if not handled_by_addon then
-        CleveRoids.Hooks.CAST_SlashCmd(msg)
+        local handled_by_addon = CleveRoids.DoWithConditionals(
+            part_msg,
+            CleveRoids.Hooks.CAST_SlashCmd, -- Pass the original hook for fallback
+            CleveRoids.FixEmptyTarget,
+            not CleveRoids.hasSuperwow,
+            CastSpellByName
+        )
+
+        if not handled_by_addon then
+            CleveRoids.Hooks.CAST_SlashCmd(part_msg)
+        end
     end
 end
 SlashCmdList.CAST = CleveRoids.CAST_SlashCmd
