@@ -112,15 +112,25 @@ SlashCmdList.STOPCASTING = function(msg)
     end
 end
 
--- /cast hook (Restored)
+-- /cast hook (Modified for multi-spell/multi-conditional execution)
 CleveRoids.Hooks.CAST_SlashCmd = SlashCmdList.CAST
 CleveRoids.CAST_SlashCmd = function(msg)
-    -- get in there first, i.e do a PreHook
-    if CleveRoids.DoCast(msg) then
-        return
+    local parts = CleveRoids.splitStringIgnoringQuotes(msg)
+
+    for _, part_msg in pairs(parts) do
+
+        local handled_by_addon = CleveRoids.DoWithConditionals(
+            part_msg,
+            CleveRoids.Hooks.CAST_SlashCmd, -- Pass the original hook for fallback
+            CleveRoids.FixEmptyTarget,
+            not CleveRoids.hasSuperwow,
+            CastSpellByName
+        )
+
+        if not handled_by_addon then
+            CleveRoids.Hooks.CAST_SlashCmd(part_msg)
+        end
     end
-    -- if there was nothing for us to handle pass it to the original
-    CleveRoids.Hooks.CAST_SlashCmd(msg)
 end
 SlashCmdList.CAST = CleveRoids.CAST_SlashCmd
 
