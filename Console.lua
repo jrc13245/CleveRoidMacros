@@ -13,16 +13,20 @@ SLASH_RELOAD1 = "/rl"
 
 SlashCmdList.RELOAD = function() ReloadUI(); end
 
+local function UseWrapper(msg)
+    CleveRoids.DoUse(msg)
+end
+
 SLASH_USE1 = "/use"
 
-SlashCmdList.USE = CleveRoids.DoUse
+SlashCmdList.USE = UseWrapper
 
 SLASH_EQUIP1 = "/equip"
 
-SlashCmdList.EQUIP = CleveRoids.DoUse
+SlashCmdList.EQUIP = UseWrapper
 -- take back supermacro and pfUI /equip
-SlashCmdList.SMEQUIP = CleveRoids.DoUse
-SlashCmdList.PFEQUIP = CleveRoids.DoUse
+SlashCmdList.SMEQUIP = UseWrapper
+SlashCmdList.PFEQUIP = UseWrapper
 
 SLASH_EQUIPMH1 = "/equipmh"
 SlashCmdList.EQUIPMH = CleveRoids.DoEquipMainhand
@@ -112,17 +116,15 @@ SlashCmdList.STOPCASTING = function(msg)
     end
 end
 
--- /cast hook (Restored)
+-- /cast hook
 CleveRoids.Hooks.CAST_SlashCmd = SlashCmdList.CAST
-CleveRoids.CAST_SlashCmd = function(msg)
-    -- get in there first, i.e do a PreHook
-    if CleveRoids.DoCast(msg) then
-        return
+SlashCmdList.CAST = function(msg)
+    local handledByAddon = CleveRoids.DoCast(msg)
+
+    if not handledByAddon then
+        CleveRoids.Hooks.CAST_SlashCmd(msg)
     end
-    -- if there was nothing for us to handle pass it to the original
-    CleveRoids.Hooks.CAST_SlashCmd(msg)
 end
-SlashCmdList.CAST = CleveRoids.CAST_SlashCmd
 
 CleveRoids.Hooks.TARGET_SlashCmd = SlashCmdList.TARGET
 CleveRoids.TARGET_SlashCmd = function(msg)
