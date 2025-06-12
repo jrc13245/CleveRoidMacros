@@ -848,7 +848,7 @@ function CleveRoids.DoCast(msg)
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
         if CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, not CleveRoids.hasSuperwow, CastSpellByName) then
             handled = true -- we parsed at least one command
-            break
+        
         end
     end
     return handled
@@ -1003,7 +1003,7 @@ function CleveRoids.DoUse(msg)
             -- Otherwise, treat it as an item (by name or slot ID).
             handled = CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action)
         end
-        if handled then break end
+
     end
     return handled
 end
