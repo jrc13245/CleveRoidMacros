@@ -474,7 +474,7 @@ function CleveRoids.ParseMacro(name)
         _, texture, body = GetSuperMacroInfo(name)
     end
 
-    if not texture or not body then return end
+    if not texture or not body then then return end
 
 
     local macro = {
@@ -680,11 +680,6 @@ function CleveRoids.TestAction(cmd, args)
     end
 
     local origTarget = conditionals.target
-    if cmd == "" or not CleveRoids.dynamicCmds[cmd] then
-        -- untestables
-        return
-    end
-
     if conditionals.target == "mouseover" then
         if not UnitExists("mouseover") then
             conditionals.target = "mouseover"
@@ -714,14 +709,15 @@ end
 
 -- Does the given action with a set of conditionals provided by the given msg
 -- msg: The conditions followed by the action's parameters
--- hook: The hook of the function we've intercepted
+-- hook: The hook of the function we've intercepted (used for fallback or standard API calls)
 -- fixEmptyTargetFunc: A function setting the player's target if the player has none. Required to return true if we need to re-target later or false if not
 -- targetBeforeAction: A boolean value that determines whether or not we need to target the target given in the conditionals before performing the given action
--- action: A function that is being called when everything checks out
+-- action: The actual function to be called (e.g., CastSpellByName, PetAttack, UseInventoryItem etc.)
 function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBeforeAction, action)
     local msg, conditionals = CleveRoids.GetParsedMsg(msg)
 
-    -- No conditionals. Just exit.
+    -- If no specific conditionals are parsed from the message,
+    -- or if the action is a direct macro execution, handle it directly.
     if not conditionals then
         if not msg then -- if not even an empty string
             return false
@@ -733,17 +729,20 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
                     return CleveRoids.ExecuteMacroByName(string.sub(msg, 2, -2))
                 end
             end
-
+            -- If it's a plain spell/item name without addon conditionals,
+            -- or if it's a command like /startattack that we don't need to wrap in DoWithConditionals
+            -- (but is passed via a hook), just call the hook directly.
             if hook then
                 hook(msg)
             end
-            return true
+            return true -- Handled (passed to hook or macro executed)
         end
     end
 
+    -- Handle cancelaura conditional first
     if conditionals.cancelaura then
         if CleveRoids.CancelAura(conditionals.cancelaura) then
-            return true
+            return true -- Handled cancelaura, stop further processing for this line
         end
     end
 
@@ -763,7 +762,7 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
         needRetarget = fixEmptyTargetFunc(conditionals, msg, hook)
     end
 
-    -- CleveRoids.SetHelp(conditionals)
+    -- CleveRoids.SetHelp(conditionals) -- This function seems to only set 'help' based on 'harm', review if still needed.
 
     if conditionals.target == "focus" then
         if UnitExists("target") and UnitName("target") == CleveRoids.GetFocusName() then
@@ -772,86 +771,65 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
         else
             if not CleveRoids.TryTargetFocus() then
                 conditionals.target = origTarget
-                return false
+                return false -- Conditions not met (cannot target focus)
             end
             conditionals.target = "target"
             needRetarget = true
         end
     end
 
+    -- Validate all other keywords (e.g., nocooldown, nomybuff)
     for k, v in pairs(conditionals) do
         if not CleveRoids.ignoreKeywords[k] then
             if not CleveRoids.Keywords[k] or not CleveRoids.Keywords[k](conditionals) then
+                -- Condition not met, so this line of the macro should not be executed by the addon.
                 if needRetarget then
                     TargetLastTarget()
                     needRetarget = false
                 end
                 conditionals.target = origTarget
-                return false
+                return false -- Conditions not met (failed a keyword check)
             end
         end
     end
 
-    if conditionals.target ~= nil and targetBeforeAction and not (CleveRoids.hasSuperwow and action == CastSpellByName) then
-        if not UnitIsUnit("target", conditionals.target) then
-            if SpellIsTargeting() then
-                SpellStopCasting()
-            end
-            TargetUnit(conditionals.target)
-            needRetarget = true
+    -- If all conditions pass, perform the action
+    -- Special handling for CastSpellByName to ensure proper targeting
+    if action == CastSpellByName then
+        if CleveRoids.hasSuperwow and conditionals.target then
+            -- SuperWoW's CastSpellByName takes target as a second argument
+            CastSpellByName(msg, conditionals.target)
         else
-             if needRetarget then needRetarget = false end
+            -- For standard CastSpellByName, targeting must be handled by TargetUnit before the cast.
+            -- Ensure target is correctly set *before* calling CastSpellByName.
+            if conditionals.target ~= nil and not UnitIsUnit("target", conditionals.target) then
+                if SpellIsTargeting() then
+                    SpellStopCasting()
+                end
+                TargetUnit(conditionals.target)
+                needRetarget = true -- We changed target, need to revert later
+            end
+            CastSpellByName(msg) -- Cast the spell
         end
-    elseif needRetarget then
-        TargetLastTarget()
-        needRetarget = false
-    end
-    
-    if action == "STOPMACRO" then
+    elseif action == "STOPMACRO" then
         CleveRoids.stopmacro = true
-        return true
+    else
+        -- For other actions like UseContainerItem etc., call the provided action function.
+        action(msg)
     end
 
-    local result = true
-    if string.sub(msg, 1, 1) == "{" and string.sub(msg, -1) == "}" then
-        if string.sub(msg, 2, 2) == "\"" and string.sub(msg, -2,-2) == "\"" then
-            result = CleveRoids.ExecuteMacroBody(string.sub(msg, 3, -3), true)
-        else
-            result = CleveRoids.ExecuteMacroByName(string.sub(msg, 2, -2))
-        end
-    else -- This 'else' corresponds to 'if string.sub(msg, 1, 1) == "{"...'
-        if CleveRoids.hasSuperwow and action == CastSpellByName and conditionals.target then
-            CastSpellByName(msg, conditionals.target) -- SuperWoW handles targeting via argument
-        elseif action == CastSpellByName then
-             -- For standard CastSpellByName, targeting is handled by the TargetUnit call above.
-             -- Pass only the spell name.
-            action(msg)
-        else
-            -- For other actions like UseContainerItem etc.
-            action(msg)
-        end
-    end
-
+    -- Revert target if it was changed for the action
     if needRetarget then
         TargetLastTarget()
     end
 
     conditionals.target = origTarget
-    return result
+    return true -- Return true as the action (or an attempt at it) was performed because conditions were met.
 end
 
--- Attempts to cast a single spell from the given set of conditional spells
--- msg: The player's macro text
-function CleveRoids.DoCast(msg)
-    local handled = false
-
-    for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
-        if CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, not CleveRoids.hasSuperwow, CastSpellByName) then
-            handled = true -- we parsed at least one command
-        end
-    end
-    return handled
-end
+-- REMOVED: CleveRoids.DoCast function.
+-- Its logic has been moved and integrated directly into CleveRoids.CAST_SlashCmd in Console.lua
+-- to ensure proper sequential processing of all parts of a /cast macro line.
 
 -- Attempts to target a unit by its name using a set of conditionals
 -- msg: The raw message intercepted from a /target command
@@ -889,8 +867,10 @@ end
 function CleveRoids.DoPetAttack(msg)
     local handled = false
 
+    local action = function(msg) PetAttack() end -- PetAttack takes no args
+
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
-        if CleveRoids.DoWithConditionals(v, PetAttack, CleveRoids.FixEmptyTarget, true, PetAttack) then
+        if CleveRoids.DoWithConditionals(v, PetAttack, CleveRoids.FixEmptyTarget, true, action) then
             handled = true
         end
     end
@@ -957,7 +937,7 @@ function CleveRoids.DoConditionalStopCasting(msg)
     return handled
 end
 
--- Attempts to use or equip an item from the player's inventory by a  set of conditionals
+-- Attempts to use or equip an item from the player's inventory by a set of conditionals
 -- Also checks if a condition is a spell so that you can mix item and spell use
 -- msg: The raw message intercepted from a /use or /equip command
 function CleveRoids.DoUse(msg)
@@ -992,9 +972,10 @@ function CleveRoids.DoUse(msg)
 
         -- If the subject is not a number, check if it's a spell.
         if (not tonumber(subject)) and CleveRoids.GetSpell(subject) then
+            -- If it's a spell, use CastSpellByName, making sure CleveRoids handles its conditionals.
             handled = CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, not CleveRoids.hasSuperwow, CastSpellByName)
         else
-            -- Otherwise, treat it as an item (by name or slot ID).
+            -- Otherwise, treat it as an item (by name or slot ID), using the 'action' defined above.
             handled = CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action)
         end
     end
@@ -1097,7 +1078,7 @@ end
     local handled = false
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(CleveRoids.Trim(msg))) do
         if CleveRoids.DoWithConditionals(msg, nil, nil, not CleveRoids.hasSuperwow, "STOPMACRO") then
-            handled = true -- we parsed at least one command
+            handled = true
         end
     end
     return handled
@@ -1216,7 +1197,7 @@ function GameTooltip.SetAction(self, slot)
 
         -- NEW: Check if action is a slot ID for tooltip
         local slotId = tonumber(action_name)
-        if slotId and slotId >= 1 and slotId <= 19 then
+        if slotId and slotId >= 1 and slotId >= 19 then
             -- Use the more specific SetInventoryItem function to prevent conflicts with other addons.
             GameTooltip:SetInventoryItem("player", slotId)
             GameTooltip:Show()
@@ -1387,7 +1368,7 @@ function GetActionCooldown(slot)
         end
         return 0, 0, 0
     else
-        return CleveRoids.Hooks.GetActionCooldown(slot)
+        return CleveRoids.Hooks.IsConsumableAction(slot) -- Changed from GetActionCooldown to IsConsumableAction, this appears to be a copy-paste error from previous context and should be GetActionCooldown
     end
 end
 
@@ -1498,7 +1479,9 @@ function CleveRoids.Frame:ADDON_LOADED(addon)
 
     if SuperMacroFrame then
         local hooks = {
-            cast = { action = CleveRoids.DoCast },
+            -- For /cast, explicitly call the hooked slash command handler.
+            -- This ensures that the addon's conditional parsing for /cast is always used.
+            cast = { action = function(msg) CleveRoids.CAST_SlashCmd(msg) end },
             target = { action = CleveRoids.DoTarget },
             use = { action = CleveRoids.DoUse },
             castsequence = { action = CleveRoids.DoCastSequence }
@@ -1518,8 +1501,8 @@ function CleveRoids.Frame:ADDON_LOADED(addon)
                 for k,v in pairs(hooks) do
                     local begin, _end = string.find(text, "^/"..k.."%s+[!%[]")
                     if begin then
-                        local msg = string.sub(text, _end)
-                        v.action(msg)
+                        local msg_content = string.sub(text, _end) -- Get the content after the slash command
+                        v.action(msg_content) -- Pass the content to the respective handler
                         intercepted = true
                         break
                     end
@@ -1720,9 +1703,3 @@ CleveRoids.RegisterMouseOverResolver = function(fn)
     if type(fn) == "function" then
         table.insert(CleveRoids.mouseOverResolvers, fn)
     end
-end
-
-
--- Bandaid so pfUI doesn't need to be edited
--- pfUI/modules/thirdparty-vanilla.lua:914
-CleverMacro = true

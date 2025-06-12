@@ -121,7 +121,7 @@ CleveRoids.CAST_SlashCmd = function(msg)
         CleveRoids.Hooks.CAST_SlashCmd,   -- Pass the original hook for fallback if addon cannot handle
         CleveRoids.FixEmptyTarget,
         not CleveRoids.hasSuperwow,
-        CastSpellByName
+        CastSpellByName                   -- The action to perform if conditions are met
     )
 
     if not handled_by_addon then
