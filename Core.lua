@@ -787,10 +787,20 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
     -- CleveRoids.SetHelp(conditionals)
 
     if conditionals.target == "focus" then
-        if UnitExists("target") and string.lower(UnitName("target")) == CleveRoids.GetFocusName() then
-            conditionals.target = "target"
+        local focusUnitId = nil
+
+        -- Attempt to get the direct UnitID from pfUI's focus frame data. This is more reliable.
+        if pfUI and pfUI.uf and pfUI.uf.focus and pfUI.uf.focus.label and pfUI.uf.focus.id and UnitExists(pfUI.uf.focus.label .. pfUI.uf.focus.id) then
+            focusUnitId = pfUI.uf.focus.label .. pfUI.uf.focus.id
+        end
+
+        if focusUnitId then
+                -- If we found a valid UnitID, we will use it for all subsequent checks and the final cast.
+                -- This avoids changing the player's actual target.
+            conditionals.target = focusUnitId
             needRetarget = false
         else
+            -- If the direct UnitID isn't found, fall back to the original (but likely failing) method of targeting by name.
             if not CleveRoids.TryTargetFocus() then
                 UIErrorsFrame:AddMessage(SPELL_FAILED_BAD_TARGETS, 1.0, 0.0, 0.0, 1.0)
                 conditionals.target = origTarget
@@ -1763,3 +1773,74 @@ end
 -- Bandaid so pfUI doesn't need to be edited
 -- pfUI/modules/thirdparty-vanilla.lua:914
 CleverMacro = true
+
+---- START of pfUI Focus Fix ----
+do
+    local f = CreateFrame("Frame")
+    f:SetScript("OnEvent", function(self, event, arg1)
+        if event == "PLAYER_LOGIN" then
+            -- This ensures we wait until the player is fully in the world and all addons are loaded.
+            self:UnregisterEvent("PLAYER_LOGIN")
+
+            -- Ensure both pfUI and its focus module are loaded before attempting to hook.
+            -- This also checks that the slash command we want to modify exists.
+            if pfUI and pfUI.uf and pfUI.uf.focus and SlashCmdList.PFFOCUS then
+
+                local original_PFFOCUS_Handler = SlashCmdList.PFFOCUS
+                SlashCmdList.PFFOCUS = function(msg)
+                    -- First, execute the original /focus command from pfUI to set the unit name.
+                    original_PFFOCUS_Handler(msg)
+
+                -- Now, if a focus name was set, find the corresponding UnitID.
+                if pfUI.uf.focus.unitname then
+                    local focusName = pfUI.uf.focus.unitname
+                    local found_label, found_id = nil, nil
+
+                    -- This function iterates through all known friendly units to find a
+                    -- name match and return its specific UnitID components.
+                    local function findUnitID()
+                        -- Check party members and their pets
+                        for i = 1, GetNumPartyMembers() do
+                            if strlower(UnitName("party"..i) or "") == focusName then
+                                return "party", i
+                            end
+                            if UnitExists("partypet"..i) and strlower(UnitName("partypet"..i) or "") == focusName then
+                                return "partypet", i
+                            end
+                        end
+
+                        -- Check raid members and their pets
+                        for i = 1, GetNumRaidMembers() do
+                            if strlower(UnitName("raid"..i) or "") == focusName then
+                                return "raid", i
+                            end
+                            if UnitExists("raidpet"..i) and strlower(UnitName("raidpet"..i) or "") == focusName then
+                                return "raidpet", i
+                            end
+                        end
+
+                        -- Check player and pet
+                        if strlower(UnitName("player") or "") == focusName then return "player", nil end
+                        if UnitExists("pet") and strlower(UnitName("pet") or "") == focusName then return "pet", nil end
+
+                            return nil, nil
+                        end
+
+                        found_label, found_id = findUnitID()
+
+                        -- Store the found label and ID. CleveRoids' Core.lua will use this
+                        -- for a direct, reliable cast without needing to change your target.
+                        pfUI.uf.focus.label = found_label
+                        pfUI.uf.focus.id = found_id
+                    else
+                        -- Focus was cleared (e.g., via /clearfocus), so ensure our cached data is cleared too.
+                        pfUI.uf.focus.label = nil
+                        pfUI.uf.focus.id = nil
+                    end
+                end
+            end
+        end
+    end)
+    f:RegisterEvent("PLAYER_LOGIN")
+    end
+    ---- END of pfUI Focus Fix ----
