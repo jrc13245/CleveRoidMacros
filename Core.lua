@@ -698,6 +698,14 @@ function CleveRoids.TestAction(cmd, args)
         return
     end
 
+    if conditionals.target == "focus" then
+        if not CleveRoids.GetFocusName() then
+            return
+        end
+        conditionals.target = "target"
+    end
+
+
     if conditionals.target == "mouseover" then
         if not UnitExists("mouseover") then
             conditionals.target = "mouseover"
