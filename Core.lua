@@ -848,6 +848,7 @@ function CleveRoids.DoCast(msg)
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
         if CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, not CleveRoids.hasSuperwow, CastSpellByName) then
             handled = true -- we parsed at least one command
+            break
         end
     end
     return handled
@@ -947,14 +948,14 @@ end
 -- Attempts to conditionally stop casting. Returns false if no conditionals are found.
 function CleveRoids.DoConditionalStopCasting(msg)
     if not string.find(msg, "%[") then return false end
-    
+
     local handled = false
     local action = function()
         SpellStopCasting()
     end
 
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
-        if CleveRoids.DoWithConditionals(v, nil, CleveRoids.FixEmptyTarget, false, action) then
+        if CleveRoids.DoWithConditionals(v, nil, nil, false, action) then
             handled = true
             break
         end
@@ -966,7 +967,7 @@ end
 -- Also checks if a condition is a spell so that you can mix item and spell use
 -- msg: The raw message intercepted from a /use or /equip command
 function CleveRoids.DoUse(msg)
-    local Handled = false
+    local handled = false
 
     local action = function(msg)
         -- NEW: Try to interpret the message as a direct inventory slot ID first.
@@ -995,17 +996,17 @@ function CleveRoids.DoUse(msg)
         local _,e = string.find(v,"%]")
         if e then subject = CleveRoids.Trim(string.sub(v,e+1)) end
 
-        local Handled = false
+        local wasHandled = false
         -- If the subject is not a number, check if it's a spell.
         if (not tonumber(subject)) and CleveRoids.GetSpell(subject) then
-            Handled = CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, not CleveRoids.hasSuperwow, CastSpellByName)
+            wasHandled = CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, not CleveRoids.hasSuperwow, CastSpellByName)
         else
             -- Otherwise, treat it as an item (by name or slot ID).
-            Handled = CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action)
+            wasHandled = CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action)
         end
-        
-        if Handled then 
-            Handled = true
+        if wasHandled then
+            handled = true
+            break
         end
     end
     return Handled

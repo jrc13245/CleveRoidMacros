@@ -24,9 +24,6 @@ local function Or(t,func)
     if type(t) ~= "table" then
         t = { [1] = t }
     end
-    if type(t) ~= "table" then
-        t = { [1] = t }
-    end
     for k,v in pairs(t) do
         if func(v) then
             return true
@@ -760,9 +757,9 @@ CleveRoids.Keywords = {
             conditionals.group = { "party", "raid" }
         end
         return Or(conditionals.group, function(groups)
-            if group == "party" then
+            if groups == "party" then
                 return GetNumPartyMembers() > 0
-            elseif group == "raid" then
+            elseif groups == "raid" then
                 return GetNumRaidMembers() > 0
             end
         end)
@@ -879,7 +876,7 @@ CleveRoids.Keywords = {
     end,
 
     rawhp = function(conditionals)
-        return And(conditionals.rawphp, function(args)
+        return And(conditionals.rawhp, function(args)
             if type(args) ~= "table" then return false end
             return CleveRoids.ValidateRawHp(conditionals.target, args.operator, args.amount)
         end)
