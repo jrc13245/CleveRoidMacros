@@ -238,7 +238,7 @@ function CleveRoids.ValidateKnown(args)
         local spell_rank_str = spell.rank or (spell.highest and spell.highest.rank) or ""
         local spell_rank_num_str = string.gsub(spell_rank_str, "Rank ", "")
 
-        if spell_rank_num_str ~= "" and not arg_amount and not arg_operator then
+        if not arg_amount and not arg_operator then
             return true
         elseif arg_amount and arg_operator and CleveRoids.operators[arg_operator] and spell_rank_num_str ~= "" then
             local numeric_rank = tonumber(spell_rank_num_str)
