@@ -1,7 +1,7 @@
 # CleveRoid Macros
 This was originally an effort to bring the dynamic tooltip and cast sequence functionality of [CleverMacro](https://github.com/DanielAdolfsson/CleverMacro) into [Roid-Macros](https://github.com/MarcelineVQ/Roid-Macros).  It has since expanded after some additional changes I wanted along with feedback from others.  The majority of credit goes to the [original addon authors](#original-addons--authors).  Still a work in progress.
 
-Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https://github.com/pepopo978/nampower) are recommended and in some cases requred.
+Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https://github.com/pepopo978/nampower) are REQUIRED for full functionality.
 
 ---
 
@@ -12,13 +12,12 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 3. Rename the `CleveRoidMacros-main` folder to `CleveRoidMacros`
 4. Check that it is enabled in your addon list in-game.  
 5. Make sure you don't have other macro addons that may interfere.  SuperMacro should be compatible.
-
+6. SUPERWOW and NAMPOWER are required for full functionality. Only report bugs when both are installed!
 ### Turtle WoW Launcher / GitAddonsManager
 1. Open either application
 2. Click the Add button
 3. Paste the url `https://github.com/jrc13245/CleveRoidMacros`
 4. Download and keep up to date
-
 --- 
 
 ## Known Issues
