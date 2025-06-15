@@ -119,9 +119,9 @@ end
 -- /cast hook
 CleveRoids.Hooks.CAST_SlashCmd = SlashCmdList.CAST
 SlashCmdList.CAST = function(msg)
-    local handledByAddon = CleveRoids.DoCast(msg)
-
-    if not handledByAddon then
+    if msg and string.find(msg, "%[") then
+        CleveRoids.DoCast(msg)
+    else
         CleveRoids.Hooks.CAST_SlashCmd(msg)
     end
 end

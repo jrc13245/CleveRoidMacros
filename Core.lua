@@ -320,6 +320,13 @@ end
 
 -- Returns the name of the focus target or nil
 function CleveRoids.GetFocusName()
+    -- 1. Add specific compatibility for pfUI.
+    -- pfUI stores its focus unit information in a table.
+    if pfUI and pfUI.uf and pfUI.uf.focus and pfUI.uf.focus.unitname then
+        return pfUI.uf.focus.unitname
+    end
+
+    -- Fallback for other focus addons
     if ClassicFocus_CurrentFocus then
         return ClassicFocus_CurrentFocus
     elseif CURR_FOCUS_TARGET then
@@ -338,7 +345,13 @@ function CleveRoids.TryTargetFocus()
         return false
     end
 
-    CleveRoids.Hooks.TARGET_SlashCmd(name)
+    TargetByName(name, true)
+
+    if not UnitExists("target") or (string.lower(UnitName("target")) ~= name) then
+        -- The target switch failed (out of range, LoS, etc.)
+        return false
+    end
+
     return true
 end
 
@@ -766,11 +779,12 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
     -- CleveRoids.SetHelp(conditionals)
 
     if conditionals.target == "focus" then
-        if UnitExists("target") and UnitName("target") == CleveRoids.GetFocusName() then
+        if UnitExists("target") and string.lower(UnitName("target")) == CleveRoids.GetFocusName() then
             conditionals.target = "target"
             needRetarget = false
         else
             if not CleveRoids.TryTargetFocus() then
+                UIErrorsFrame:AddMessage(SPELL_FAILED_BAD_TARGETS, 1.0, 0.0, 0.0, 1.0)
                 conditionals.target = origTarget
                 return false
             end

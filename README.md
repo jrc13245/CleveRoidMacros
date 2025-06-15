@@ -141,9 +141,9 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 | Command               | Conditionals Supported | Purpose |
 |-----------------------|          :-:           |---------|
 | /retarget             |   | Clears your target if it doesn't exist, has 0 hp or if you can't attack it and then targets the nearest enemy. |
-| /startattack          |   | Starts auto-attacking. |
-| /stopattack           |   | Stops auto-attacking. |
-| /stopcasting          |   | Stops casting. |
+| /startattack          | * | Starts auto-attacking. |
+| /stopattack           | * | Stops auto-attacking. |
+| /stopcasting          | * | Stops casting. |
 | /petattack            | * | Starts your pet's auto-attack. |
 | /castsequence         | * | Performs a cast sequence.  See [below](#cast-sequence) for more infomation. |
 | /equip                | * | Equips an item by name or itemid. |
@@ -182,6 +182,23 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 * Spells and items with spaces in the name need to use underscores (`_`) instead of spaces or be enclosed in quotations.
 * Each action can be written on one line or on separate.  Both are effectively the same however WoW executes every line of a macro so it is technically better to use one line where possible.  I usually prefer separate lines because it's easier to read and troubleshoot at a quick glance.  You do you.
   
+  
+  **startattack, stopattack, stopacasting:**
+  ```
+  #showtooltip
+  /startattack [harm alive]
+  
+  #showtooltip
+  /stopattack [form:0/1/2/3]
+
+  #showtooltip
+  /stopcasting [hp:<=20]
+  ```
+    **Item Slots 1-19 supports /use only right now:**
+  ```
+  #showtooltip
+  /use [combat,hp:<=20]13
+  ```
   **Separate Lines:**
   ```
   #showtooltip
@@ -194,7 +211,7 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
   #showtooltip
   /use [@mouseover alive help hp:<70 nodebuff:"Recently Bandaged"] Runecloth Bandage; [@target, alive, help, hp:<70, nodebuff:Recently_Bandaged] Runecloth Bandage; [@player] Runecloth Bandage
   ```
-  **Note: Classic/Retail macros allow for cascading conditional blocks like below.  This is NOT supported however a future update will add support for it.**  
+  **Note: Classic/Retail macros allow for cascading conditional blocks like below.  This is NOT supported.**  
   ```
   #showtooltip
   /use [@mouseover alive help hp:<70][@target alive help hp:<70][@player][] Runecloth Bandage
