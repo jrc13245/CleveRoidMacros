@@ -121,11 +121,16 @@ function CleveRoids.HasWeaponEquipped(weaponType)
     local localizedName = CleveRoids.WeaponTypeNames[weaponType].name
     local slotId = GetInventorySlotInfo(slotName)
     local slotLink = GetInventoryItemLink("player",slotId)
+
+    -- ADD THIS CHECK:
     if not slotLink then
         return false
     end
 
     local _,_,itemId = string.find(slotLink,"item:(%d+)")
+    if not itemId then -- Also good to check if itemId was found
+        return false
+    end
     local _name,_link,_,_lvl,_type,subtype = GetItemInfo(itemId)
     -- just had to be special huh?
     local fist = string.find(subtype,"^Fist")
