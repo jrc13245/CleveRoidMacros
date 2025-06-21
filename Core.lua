@@ -37,7 +37,7 @@ function CleveRoids.TestForActiveAction(actions)
 
     if actions.tooltip and table.getn(actions.list) == 0 then
         if CleveRoids.TestAction(actions.cmd or "", actions.args or "") then
-      
+
             hasActive = true
             actions.active = actions.tooltip
         end
@@ -121,7 +121,7 @@ end
 function CleveRoids.TestForAllActiveActions()
     for slot, actions in CleveRoids.Actions do
         local stateChanged = CleveRoids.TestForActiveAction(actions)
-        if stateChanged then 
+        if stateChanged then
             CleveRoids.SendEventForAction(slot, "ACTIONBAR_SLOT_CHANGED", slot)
         end
     end
@@ -377,7 +377,7 @@ function CleveRoids.CreateActionInfo(action, conditionals)
         actionType = "item"
         -- Use the most reliable method first to get the texture for an equipped item.
         local itemTexture = GetInventoryItemTexture("player", slotId)
-        
+
         -- Check if the texture was successfully found.
         if itemTexture then
             texture = itemTexture
@@ -609,7 +609,7 @@ function CleveRoids.ParseMsg(msg)
                         processed_arg = string.gsub(processed_arg, '"', "")
                         processed_arg = string.gsub(processed_arg, "_", " ")
                         processed_arg = CleveRoids.Trim(processed_arg)
-                        
+
                         local arg_for_find = processed_arg
                         arg_for_find = string.gsub(arg_for_find, "^#(%d+)$", "=#%1")
                         arg_for_find = string.gsub(arg_for_find, "([^>~=<]+)#(%d+)", "%1=#%2")
@@ -618,8 +618,8 @@ function CleveRoids.ParseMsg(msg)
                         if not operator or not amount then
                             table.insert(conditionals[condition], processed_arg)
                         else
-                            local name_to_use = (name and name ~= "") and name or conditionals.action 
-                            
+                            local name_to_use = (name and name ~= "") and name or conditionals.action
+
                             local final_amount_str, num_replacements = string.gsub(amount, "#", "")
                             local should_check_stacks = (num_replacements == 1)
 
@@ -838,7 +838,7 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
         TargetLastTarget()
         needRetarget = false
     end
-    
+
     if action == "STOPMACRO" then
         CleveRoids.stopmacro = true
         return true
@@ -1001,8 +1001,9 @@ end
 function CleveRoids.DoUse(msg)
     local handled = false
 
+    -- START of replacement block for the 'action' function
     local action = function(msg)
-        -- NEW: Try to interpret the message as a direct inventory slot ID first.
+        -- Try to interpret the message as a direct inventory slot ID first.
         local slotId = tonumber(msg)
         if slotId and slotId >= 1 and slotId <= 19 then -- Character slots are 1-19
             UseInventoryItem(slotId)
@@ -1013,14 +1014,31 @@ function CleveRoids.DoUse(msg)
         local item = CleveRoids.GetItem(msg)
 
         if item and item.inventoryID then
+            -- This is for using an already-equipped item (like a trinket).
+            -- This action does not cause an inventory change that needs a fast re-index.
             return UseInventoryItem(item.inventoryID)
         elseif item and item.bagID then
+            -- This will use an item from a bag. It could be a potion (use) or a weapon (equip).
+            -- We need to check if it's an equippable item before using it.
+            local isEquippable = false
+            local itemName, _, _, _, _, _, _, _, itemEquipLoc = GetItemInfo(msg)
+            if itemName and itemEquipLoc and itemEquipLoc ~= "" then
+                isEquippable = true
+            end
+
             CleveRoids.GetNextBagSlotForUse(item, msg)
-            return UseContainerItem(item.bagID, item.slot)
+            UseContainerItem(item.bagID, item.slot)
+
+            -- If it was an equippable item, force a cache refresh on the next inventory event.
+            if isEquippable then
+                CleveRoids.lastItemIndexTime = 0
+            end
+            return
         end
 
         if (MerchantFrame:IsVisible() and MerchantFrame.selectedTab == 1) then return end
     end
+    -- END of replacement block
 
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
         v = string.gsub(v, "^%?", "")
@@ -1041,7 +1059,7 @@ function CleveRoids.DoUse(msg)
             break
         end
     end
-    return Handled
+    return handled -- Corrected typo from 'Handled' to 'handled'
 end
 
 
@@ -1062,6 +1080,8 @@ function CleveRoids.EquipBagItem(msg, offhand)
 
     EquipCursorItem(invslot)
     ClearCursor()
+
+    CleveRoids.lastItemIndexTime = 0
 
     return true
 end
@@ -1693,7 +1713,7 @@ function CleveRoids.Frame:BAG_UPDATE()
     if (now - (CleveRoids.lastItemIndexTime or 0)) > 1.0 then
         CleveRoids.lastItemIndexTime = now
         CleveRoids.IndexItems()
-        
+
         -- Directly clear all relevant caches and force a UI refresh for all buttons.
         CleveRoids.Actions = {}
         CleveRoids.Macros = {}
@@ -1708,7 +1728,7 @@ function CleveRoids.Frame:UNIT_INVENTORY_CHANGED()
     if arg1 ~= "player" then
         return
     end
-    
+
     local now = GetTime()
     -- Only index items if more than 1 second has passed since the last index
     if (now - (CleveRoids.lastItemIndexTime or 0)) > 1.0 then
