@@ -272,7 +272,7 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 | stance         | [stance:0/1/2/3/4/5] | * |  | If the player is in stance #.<br/>Supports Shadowform and Stealth as stance 1.|
 | stealth        | [stealth] |  | * | If the player is in Stealth or Prowl. |
 | zone           | [zone:"Zone"]<br/>[zone:"Zone"/"Another Zone"] | * | * | If the player is in one or more zones of the given name. |
-
+| aftercast      | [aftercast:spellname] |   |   | cast spell only after named spell is cast. |
 
 ### Unit Based
 ### The default @unitid is usually @target if you don't specify one
