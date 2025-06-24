@@ -320,19 +320,11 @@ end
 
 -- Returns the name of the focus target or nil
 function CleveRoids.GetFocusName()
-    -- 1. Add specific compatibility for pfUI.
-    -- pfUI stores its focus unit information in a table.
-    if pfUI and pfUI.uf and pfUI.uf.focus and pfUI.uf.focus.unitname then
-        return pfUI.uf.focus.unitname
-    end
-
-    -- Fallback for other focus addons
     if ClassicFocus_CurrentFocus then
         return ClassicFocus_CurrentFocus
     elseif CURR_FOCUS_TARGET then
         return CURR_FOCUS_TARGET
     end
-
     return nil
 end
 
@@ -340,15 +332,11 @@ end
 -- returns: Whether or not it succeeded
 function CleveRoids.TryTargetFocus()
     local name = CleveRoids.GetFocusName()
-
-    if not name then
-        return false
-    end
+    if not name then return false end
 
     TargetByName(name, true)
 
-    if not UnitExists("target") or (string.lower(UnitName("target")) ~= name) then
-        -- The target switch failed (out of range, LoS, etc.)
+    if not UnitExists("target") or (strlower(UnitName("target")) ~= strlower(name)) then
         return false
     end
 
@@ -787,28 +775,15 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
     -- CleveRoids.SetHelp(conditionals)
 
     if conditionals.target == "focus" then
-        local focusUnitId = nil
-
-        -- Attempt to get the direct UnitID from pfUI's focus frame data. This is more reliable.
-        if pfUI and pfUI.uf and pfUI.uf.focus and pfUI.uf.focus.label and pfUI.uf.focus.id and UnitExists(pfUI.uf.focus.label .. pfUI.uf.focus.id) then
-            focusUnitId = pfUI.uf.focus.label .. pfUI.uf.focus.id
+        local success, retargetOverride = CleveRoids.TryTargetFocus()
+        if not success then
+            UIErrorsFrame:AddMessage(SPELL_FAILED_BAD_TARGETS, 1.0, 0.0, 0.0, 1.0)
+            conditionals.target = origTarget
+            return false
         end
-
-        if focusUnitId then
-                -- If we found a valid UnitID, we will use it for all subsequent checks and the final cast.
-                -- This avoids changing the player's actual target.
-            conditionals.target = focusUnitId
-            needRetarget = false
-        else
-            -- If the direct UnitID isn't found, fall back to the original (but likely failing) method of targeting by name.
-            if not CleveRoids.TryTargetFocus() then
-                UIErrorsFrame:AddMessage(SPELL_FAILED_BAD_TARGETS, 1.0, 0.0, 0.0, 1.0)
-                conditionals.target = origTarget
-                return false
-            end
-            conditionals.target = "target"
-            needRetarget = true
-        end
+        conditionals.target = "target"
+        -- If the hook provides an override, use it. Otherwise, default to 'true'.
+        needRetarget = (retargetOverride == nil) and true or retargetOverride
     end
 
     for k, v in pairs(conditionals) do
@@ -863,6 +838,14 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
         else
             -- For other actions like UseContainerItem etc.
             action(msg)
+        end
+    end
+
+    if result and conditionals.aftercast then
+        local triggerSpell = conditionals.aftercast[1]
+        if triggerSpell then
+            -- ...lock the action by mapping it to its trigger spell.
+            CleveRoids.aftercastLocks[conditionals.action] = triggerSpell
         end
     end
 
@@ -1003,8 +986,9 @@ end
 function CleveRoids.DoUse(msg)
     local handled = false
 
+    -- START of replacement block for the 'action' function
     local action = function(msg)
-        -- NEW: Try to interpret the message as a direct inventory slot ID first.
+        -- Try to interpret the message as a direct inventory slot ID first.
         local slotId = tonumber(msg)
         if slotId and slotId >= 1 and slotId <= 19 then -- Character slots are 1-19
             UseInventoryItem(slotId)
@@ -1015,14 +999,31 @@ function CleveRoids.DoUse(msg)
         local item = CleveRoids.GetItem(msg)
 
         if item and item.inventoryID then
+            -- This is for using an already-equipped item (like a trinket).
+            -- This action does not cause an inventory change that needs a fast re-index.
             return UseInventoryItem(item.inventoryID)
         elseif item and item.bagID then
+            -- This will use an item from a bag. It could be a potion (use) or a weapon (equip).
+            -- We need to check if it's an equippable item before using it.
+            local isEquippable = false
+            local itemName, _, _, _, _, _, _, _, itemEquipLoc = GetItemInfo(msg)
+            if itemName and itemEquipLoc and itemEquipLoc ~= "" then
+                isEquippable = true
+            end
+
             CleveRoids.GetNextBagSlotForUse(item, msg)
-            return UseContainerItem(item.bagID, item.slot)
+            UseContainerItem(item.bagID, item.slot)
+
+            -- If it was an equippable item, force a cache refresh on the next inventory event.
+            if isEquippable then
+                CleveRoids.lastItemIndexTime = 0
+            end
+            return
         end
 
         if (MerchantFrame:IsVisible() and MerchantFrame.selectedTab == 1) then return end
     end
+    -- END of replacement block
 
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
         v = string.gsub(v, "^%?", "")
@@ -1043,7 +1044,7 @@ function CleveRoids.DoUse(msg)
             break
         end
     end
-    return Handled
+    return handled
 end
 
 
@@ -1064,6 +1065,8 @@ function CleveRoids.EquipBagItem(msg, offhand)
 
     EquipCursorItem(invslot)
     ClearCursor()
+
+    CleveRoids.lastItemIndexTime = 0
 
     return true
 end
@@ -1584,6 +1587,20 @@ function CleveRoids.Frame:ADDON_LOADED(addon)
 end
 
 function CleveRoids.Frame:UNIT_CASTEVENT(caster,target,action,spell_id,cast_time)
+
+    if caster == CleveRoids.playerGuid and action == "CAST" then
+        local castSpellName, _ = SpellInfo(spell_id)
+        if castSpellName then
+            -- Check if the spell that was just cast is a trigger for any locked spells
+            for lockedSpell, triggerSpell in pairs(CleveRoids.aftercastLocks) do
+                if triggerSpell == castSpellName then
+                    -- It's a match, so unlock the spell by removing it from the table.
+                    CleveRoids.aftercastLocks[lockedSpell] = nil
+                end
+            end
+        end
+    end
+
     if action == "MAINHAND" or action == "OFFHAND" then return end
 
     -- handle cast spell tracking
@@ -1674,6 +1691,10 @@ function CleveRoids.Frame:UPDATE_MACROS()
 
     CleveRoids.Sequences = nil;
     CleveRoids.Sequences = {}
+
+    -- ADD THIS LINE
+    CleveRoids.aftercastLocks = nil;
+    CleveRoids.aftercastLocks = {}
 
     CleveRoids.IndexSpells()
     CleveRoids.IndexTalents()
@@ -1775,74 +1796,3 @@ end
 -- Bandaid so pfUI doesn't need to be edited
 -- pfUI/modules/thirdparty-vanilla.lua:914
 CleverMacro = true
-
----- START of pfUI Focus Fix ----
-do
-    local f = CreateFrame("Frame")
-    f:SetScript("OnEvent", function(self, event, arg1)
-        if event == "PLAYER_LOGIN" then
-            -- This ensures we wait until the player is fully in the world and all addons are loaded.
-            self:UnregisterEvent("PLAYER_LOGIN")
-
-            -- Ensure both pfUI and its focus module are loaded before attempting to hook.
-            -- This also checks that the slash command we want to modify exists.
-            if pfUI and pfUI.uf and pfUI.uf.focus and SlashCmdList.PFFOCUS then
-
-                local original_PFFOCUS_Handler = SlashCmdList.PFFOCUS
-                SlashCmdList.PFFOCUS = function(msg)
-                    -- First, execute the original /focus command from pfUI to set the unit name.
-                    original_PFFOCUS_Handler(msg)
-
-                -- Now, if a focus name was set, find the corresponding UnitID.
-                if pfUI.uf.focus.unitname then
-                    local focusName = pfUI.uf.focus.unitname
-                    local found_label, found_id = nil, nil
-
-                    -- This function iterates through all known friendly units to find a
-                    -- name match and return its specific UnitID components.
-                    local function findUnitID()
-                        -- Check party members and their pets
-                        for i = 1, GetNumPartyMembers() do
-                            if strlower(UnitName("party"..i) or "") == focusName then
-                                return "party", i
-                            end
-                            if UnitExists("partypet"..i) and strlower(UnitName("partypet"..i) or "") == focusName then
-                                return "partypet", i
-                            end
-                        end
-
-                        -- Check raid members and their pets
-                        for i = 1, GetNumRaidMembers() do
-                            if strlower(UnitName("raid"..i) or "") == focusName then
-                                return "raid", i
-                            end
-                            if UnitExists("raidpet"..i) and strlower(UnitName("raidpet"..i) or "") == focusName then
-                                return "raidpet", i
-                            end
-                        end
-
-                        -- Check player and pet
-                        if strlower(UnitName("player") or "") == focusName then return "player", nil end
-                        if UnitExists("pet") and strlower(UnitName("pet") or "") == focusName then return "pet", nil end
-
-                            return nil, nil
-                        end
-
-                        found_label, found_id = findUnitID()
-
-                        -- Store the found label and ID. CleveRoids' Core.lua will use this
-                        -- for a direct, reliable cast without needing to change your target.
-                        pfUI.uf.focus.label = found_label
-                        pfUI.uf.focus.id = found_id
-                    else
-                        -- Focus was cleared (e.g., via /clearfocus), so ensure our cached data is cleared too.
-                        pfUI.uf.focus.label = nil
-                        pfUI.uf.focus.id = nil
-                    end
-                end
-            end
-        end
-    end)
-    f:RegisterEvent("PLAYER_LOGIN")
-    end
-    ---- END of pfUI Focus Fix ----
