@@ -334,8 +334,29 @@ function CleveRoids.TryTargetFocus()
     local name = CleveRoids.GetFocusName()
     if not name then return false end
 
-    TargetByName(name, true)
+    local targetAcquired = false
 
+    -- METHOD 1 (Most Reliable): Use the direct unitID stored by pfUI.
+    if pfUI and pfUI.uf and pfUI.uf.focus and pfUI.uf.focus.label and pfUI.uf.focus.id then
+        local focusUnitId = pfUI.uf.focus.label .. pfUI.uf.focus.id
+        if UnitExists(focusUnitId) and strlower(UnitName(focusUnitId)) == strlower(name) then
+            TargetUnit(focusUnitId)
+            targetAcquired = true
+        end
+    end
+
+    -- METHOD 2 (Fallback): If we couldn't target by unitID, use the previous logic.
+    if not targetAcquired then
+        -- Use TargetUnit for self, as it's more reliable than TargetByName.
+        if strlower(name) == strlower(UnitName("player")) then
+            TargetUnit("player")
+        else
+            -- Use TargetByName for all other cases.
+            TargetByName(name, true)
+        end
+    end
+
+    -- Final verification to ensure we have the correct target.
     if not UnitExists("target") or (strlower(UnitName("target")) ~= strlower(name)) then
         return false
     end
@@ -728,71 +749,64 @@ end
 -- targetBeforeAction: A boolean value that determines whether or not we need to target the target given in the conditionals before performing the given action
 -- action: A function that is being called when everything checks out
 function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBeforeAction, action)
-    local msg, conditionals = CleveRoids.GetParsedMsg(msg)
+    local parsedMsg, conditionals = CleveRoids.GetParsedMsg(msg)
 
-    -- No conditionals. Just exit.
+    -- No conditionals. Execute the original command or a simple macro.
     if not conditionals then
-        if not msg then -- if not even an empty string
-            return false
-        else
-            if string.sub(msg, 1, 1) == "{" and string.sub(msg, -1) == "}" then
-                if string.sub(msg, 2, 2) == "\"" and string.sub(msg, -2, -2) == "\"" then
-                    return CleveRoids.ExecuteMacroBody(string.sub(msg, 3, -3), true)
-                else
-                    return CleveRoids.ExecuteMacroByName(string.sub(msg, 2, -2))
+        if not parsedMsg then return false end
+
+        if string.sub(parsedMsg, 1, 1) == "{" and string.sub(parsedMsg, -1) == "}" then
+            if string.sub(parsedMsg, 2, 2) == "\"" and string.sub(parsedMsg, -2, -2) == "\"" then
+                return CleveRoids.ExecuteMacroBody(string.sub(parsedMsg, 3, -3), true)
+            else
+                return CleveRoids.ExecuteMacroByName(string.sub(parsedMsg, 2, -2))
+            end
+        end
+
+        if hook then hook(parsedMsg) end
+        return true
+    end
+
+    -- Handle auras first
+    if conditionals.cancelaura and CleveRoids.CancelAura(conditionals.cancelaura) then
+        return true
+    end
+
+    -- Special execution path for any macro containing [@focus]
+    if conditionals.target == "focus" then
+        -- First, check that all OTHER conditionals are met (e.g., [mod:alt], [combat])
+        local otherConditionsMet = true
+        for key, _ in pairs(conditionals) do
+            if key ~= "target" and not CleveRoids.ignoreKeywords[key] then
+                if not CleveRoids.Keywords[key] or not CleveRoids.Keywords[key](conditionals) then
+                    otherConditionsMet = false
+                    break
                 end
             end
+        end
 
-            if hook then
-                hook(msg)
+        if otherConditionsMet then
+            -- All conditions passed. Delegate the action to pfUI's robust /castfocus logic.
+            if SlashCmdList.PFCASTFOCUS then
+                SlashCmdList.PFCASTFOCUS(conditionals.action)
+                return true -- Halt further execution in CleveRoids
             end
-            return true
         end
+        -- If conditions were not met, or pfUI's command doesn't exist, fail silently.
+        return false
     end
 
-    if conditionals.cancelaura then
-        if CleveRoids.CancelAura(conditionals.cancelaura) then
-            return true
-        end
-    end
-
+    -- Standard execution path for all non-@focus macros
     local origTarget = conditionals.target
-    if conditionals.target == "mouseover" then
-        if UnitExists("mouseover") then
-            conditionals.target = "mouseover"
-        elseif CleveRoids.mouseoverUnit and UnitExists(CleveRoids.mouseoverUnit) then
-            conditionals.target = CleveRoids.mouseoverUnit
-        else
-            conditionals.target = "mouseover"
-        end
-    end
-
     local needRetarget = false
     if fixEmptyTargetFunc then
-        needRetarget = fixEmptyTargetFunc(conditionals, msg, hook)
-    end
-
-    -- CleveRoids.SetHelp(conditionals)
-
-    if conditionals.target == "focus" then
-        local success, retargetOverride = CleveRoids.TryTargetFocus()
-        if not success then
-            UIErrorsFrame:AddMessage(SPELL_FAILED_BAD_TARGETS, 1.0, 0.0, 0.0, 1.0)
-            conditionals.target = origTarget
-            return false
-        end
-        conditionals.target = "target"
-        -- If the hook provides an override, use it. Otherwise, default to 'true'.
-        needRetarget = (retargetOverride == nil) and true or retargetOverride
+        needRetarget = fixEmptyTargetFunc(conditionals, parsedMsg, hook)
     end
 
     for k, v in pairs(conditionals) do
         if not CleveRoids.ignoreKeywords[k] then
             if not CleveRoids.Keywords[k] or not CleveRoids.Keywords[k](conditionals) then
-                if needRetarget then
-                    TargetLastTarget()
-                    needRetarget = false
-                end
+                if needRetarget then TargetLastTarget() end
                 conditionals.target = origTarget
                 return false
             end
@@ -801,58 +815,47 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
 
     if conditionals.target ~= nil and targetBeforeAction and not (CleveRoids.hasSuperwow and action == CastSpellByName) then
         if not UnitIsUnit("target", conditionals.target) then
-            if SpellIsTargeting() then
-                SpellStopCasting()
-            end
+            if SpellIsTargeting() then SpellStopCasting() end
             TargetUnit(conditionals.target)
             needRetarget = true
         else
-             if needRetarget then needRetarget = false end
+            if needRetarget then needRetarget = false end
         end
     elseif needRetarget then
         TargetLastTarget()
         needRetarget = false
     end
 
-    msg = conditionals.action
-
+    parsedMsg = conditionals.action
     if action == "STOPMACRO" then
         CleveRoids.stopmacro = true
         return true
     end
 
     local result = true
-    if string.sub(msg, 1, 1) == "{" and string.sub(msg, -1) == "}" then
-        if string.sub(msg, 2, 2) == "\"" and string.sub(msg, -2,-2) == "\"" then
-            result = CleveRoids.ExecuteMacroBody(string.sub(msg, 3, -3), true)
+    if string.sub(parsedMsg, 1, 1) == "{" and string.sub(parsedMsg, -1) == "}" then
+        if string.sub(parsedMsg, 2, 2) == "\"" and string.sub(parsedMsg, -2, -2) == "\"" then
+            result = CleveRoids.ExecuteMacroBody(string.sub(parsedMsg, 3, -3), true)
         else
-            result = CleveRoids.ExecuteMacroByName(string.sub(msg, 2, -2))
+            result = CleveRoids.ExecuteMacroByName(string.sub(parsedMsg, 2, -2))
         end
-    else -- This 'else' corresponds to 'if string.sub(msg, 1, 1) == "{"...'
+    else
         if CleveRoids.hasSuperwow and action == CastSpellByName and conditionals.target then
-            CastSpellByName(msg, conditionals.target) -- SuperWoW handles targeting via argument
+            CastSpellByName(parsedMsg, conditionals.target)
         elseif action == CastSpellByName then
-             -- For standard CastSpellByName, targeting is handled by the TargetUnit call above.
-             -- Pass only the spell name.
-            action(msg)
+            action(parsedMsg)
         else
-            -- For other actions like UseContainerItem etc.
-            action(msg)
+            action(parsedMsg)
         end
     end
 
     if result and conditionals.aftercast then
-        local triggerSpell = conditionals.aftercast[1]
-        if triggerSpell then
-            -- ...lock the action by mapping it to its trigger spell.
-            CleveRoids.aftercastLocks[conditionals.action] = triggerSpell
+        if conditionals.aftercast[1] then
+            CleveRoids.aftercastLocks[conditionals.action] = conditionals.aftercast[1]
         end
     end
 
-    if needRetarget then
-        TargetLastTarget()
-    end
-
+    if needRetarget then TargetLastTarget() end
     conditionals.target = origTarget
     return result
 end
