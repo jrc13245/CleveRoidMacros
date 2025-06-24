@@ -119,7 +119,7 @@ end
 -- /cast hook
 CleveRoids.Hooks.CAST_SlashCmd = SlashCmdList.CAST
 SlashCmdList.CAST = function(msg)
-    if msg and string.find(msg, "[%[%?!~]") then
+    if msg and string.find(msg, "[%[%?!~{]") then
         CleveRoids.DoCast(msg)
     else
         CleveRoids.Hooks.CAST_SlashCmd(msg)
