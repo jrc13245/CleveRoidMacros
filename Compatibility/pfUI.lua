@@ -15,43 +15,23 @@ function Extension.DLOG(msg)
     end
 end
 
---
--- This is the new, corrected hook function for GetFocusName
---
 function Extension.FocusNameHook()
-    -- First, try to get the focus name directly from pfUI's data structure.
-    -- This is the primary purpose of this compatibility hook.
-    if pfUI and pfUI.uf and pfUI.uf.focus and pfUI.uf.focus.unitname and pfUI.uf.focus.unitname ~= "" then
-        return pfUI.uf.focus.unitname
-    end
-
-    -- If the pfUI focus is not found, fall back to the original GetFocusName function.
-    -- This allows CleveRoids to work with other focus addons if the pfUI focus isn't set.
     local hook = Extension.internal.memberHooks[CleveRoids]["GetFocusName"]
+    local target = hook.origininal()
 
-    -- The original function is stored in the 'original' field by the hook framework.
-    -- The typo 'origininal' in the original file would have caused a Lua error.
-    if hook and hook.original then
-        return hook.original()
+    if pfUI and pfUI.uf and pfUI.uf.focus and pfUI.uf.focus.unitname then
+        target = pfUI.uf.focus.unitname
     end
 
-    -- If all else fails, return nil.
-    return nil
+    --Extension.DLOG(target)
+
+    return target
 end
 
-
---
--- This is the new, corrected OnLoad function
---
-function Extension.OnLoad(addon)
-    -- Only apply the hook after pfUI itself has finished loading. This prevents a race condition.
-    if addon == "pfUI" then
-        Extension.DLOG("pfUI has loaded. Applying compatibility hook for GetFocusName.")
-        Extension.HookMethod(CleveRoids, "GetFocusName", "FocusNameHook", true)
-
-        -- The hook is now active. We can stop listening for ADDON_LOADED events.
-        Extension.UnregisterEvent("ADDON_LOADED", "OnLoad")
-    end
+function Extension.OnLoad()
+    Extension.DLOG("Extension pfUI Loaded.")
+    Extension.HookMethod(CleveRoids, "GetFocusName", "FocusNameHook", true)
+    Extension.UnregisterEvent("ADDON_LOADED", "Onload")
 end
 
 
