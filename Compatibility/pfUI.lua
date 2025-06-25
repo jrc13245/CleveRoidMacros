@@ -17,7 +17,7 @@ end
 
 function Extension.FocusNameHook()
     local hook = Extension.internal.memberHooks[CleveRoids]["GetFocusName"]
-    local target = hook.origininal()
+    local target = hook.original()
 
     if pfUI and pfUI.uf and pfUI.uf.focus and pfUI.uf.focus.unitname then
         target = pfUI.uf.focus.unitname
@@ -33,6 +33,5 @@ function Extension.OnLoad()
     Extension.HookMethod(CleveRoids, "GetFocusName", "FocusNameHook", true)
     Extension.UnregisterEvent("ADDON_LOADED", "Onload")
 end
-
 
 _G["CleveRoids"] = CleveRoids
