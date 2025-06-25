@@ -264,7 +264,7 @@ function CleveRoids.ValidateKnown(args)
             return false
         end
     end
-
+    
     return false
 end
 
@@ -719,13 +719,6 @@ CleveRoids.Keywords = {
 
     alive = function(conditionals)
         return not UnitIsDeadOrGhost(conditionals.target)
-    end,
-
-    aftercast = function(conditionals)
-        if not conditionals.action or type(conditionals.aftercast) ~= "table" then return false end
-
-        -- The conditional passes (returns true) if the spell is NOT in the lock table.
-        return CleveRoids.aftercastLocks[conditionals.action] == nil
     end,
 
     reactive = function(conditionals)
