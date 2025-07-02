@@ -100,6 +100,7 @@ CleveRoids.auraTextures = {
     ["Seal of Light"] = "Interface\\Icons\\Spell_Holy_HealingAura",
     ["Seal of the Justice"] = "Interface\\Icons\\Spell_Holy_SealOfWrath",
     ["Seal of Righteousness"] = "Interface\\Icons\\Ability_ThunderBolt",
+    ["Seal of Command"] = "Interface\\Icons\\Ability_Warrior_InnerRage",
 }
 
 
