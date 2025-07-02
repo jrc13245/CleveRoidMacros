@@ -139,6 +139,7 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 ## Slash Commands
 | Command               | Conditionals Supported | Purpose |
 |-----------------------|          :-:           |---------|
+| /target               | * | now takes conditionals! |
 | /retarget             |   | Clears your target if it doesn't exist, has 0 hp or if you can't attack it and then targets the nearest enemy. |
 | /startattack          | * | Starts auto-attacking. |
 | /stopattack           | * | Stops auto-attacking. |
@@ -153,7 +154,7 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 | /runmacro             |   | Runs a macro.  Use /runmacro {macroname} |
 | /use                  | * | Uses an item by name or id |
 | /cast                 | * | Casts a spell by name      |
-
+| /stopmacro            | * | prevent any lines under /stopmacro from being run unless conditionals are met |
 
 ## Cast Sequence
   ```lua
@@ -272,7 +273,7 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 | stance         | [stance:0/1/2/3/4/5] | * |  | If the player is in stance #.<br/>Supports Shadowform and Stealth as stance 1.|
 | stealth        | [stealth] |  | * | If the player is in Stealth or Prowl. |
 | zone           | [zone:"Zone"]<br/>[zone:"Zone"/"Another Zone"] | * | * | If the player is in one or more zones of the given name. |
-
+| checkchanneled | [checkchanneled] | * |  | Prevents a spell from being cast if you are already channeling it. |
 
 ### Unit Based
 ### The default @unitid is usually @target if you don't specify one
@@ -299,7 +300,8 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 | rawpower       | [rawpower:>=X]<br/>[rawpower:>=X/<=Y] |  |  | The @unitid power (mana/rage/energy) compared to X. |
 | type           | [type:"Creature Type"] | * | * | If the @unitid is the specified creature type.  See [below](#creature-types) for a list of valid Creature Types. |
 | targeting      | [targeting:unitid] | * | * | If the @unitid is targeting the specified unitid.<br/>See this [article](https://wowpedia.fandom.com/wiki/UnitId) for a list of unitids.<br/>Not all units are valid in vanilla. |
-
+| exists         | [exists] |  |  | If the @unitid exists. |
+| @unitid        | [@mouseover] |  |  | The @unitid is a valid target. |
 
 ### Weapon Types
 | Name | Slot |
