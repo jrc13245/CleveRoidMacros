@@ -797,7 +797,7 @@ CleveRoids.Keywords = {
     end,
 
     buff = function(conditionals)
-        return Or(conditionals.buff, function(v)
+        return And(conditionals.buff, function(v)
             return CleveRoids.ValidateUnitBuff(conditionals.target, v)
         end)
     end,
@@ -809,7 +809,7 @@ CleveRoids.Keywords = {
     end,
 
     debuff = function(conditionals)
-        return Or(conditionals.debuff, function(v)
+        return And(conditionals.debuff, function(v)
             return CleveRoids.ValidateUnitDebuff(conditionals.target, v)
         end)
     end,
@@ -821,7 +821,7 @@ CleveRoids.Keywords = {
     end,
 
     mybuff = function(conditionals)
-        return Or(conditionals.mybuff, function(v)
+        return And(conditionals.mybuff, function(v)
             return CleveRoids.ValidatePlayerBuff(v)
         end)
     end,
@@ -833,7 +833,7 @@ CleveRoids.Keywords = {
     end,
 
     mydebuff = function(conditionals)
-        return Or(conditionals.mydebuff, function(v)
+        return And(conditionals.mydebuff, function(v)
             return CleveRoids.ValidatePlayerDebuff(v)
         end)
     end,
