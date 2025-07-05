@@ -89,6 +89,9 @@ function CleveRoids.TestForActiveAction(actions)
 
             actions.active.oom = (UnitMana("player") < actions.active.spell.cost)
 
+            local start, duration = GetSpellCooldown(actions.active.spell.spellSlot, actions.active.spell.bookType)
+            local onCooldown = (start > 0 and duration > 0)
+
             if actions.active.isReactive then
                 if not CleveRoids.IsReactiveUsable(actions.active.action) then
                     actions.active.oom = false
@@ -96,7 +99,7 @@ function CleveRoids.TestForActiveAction(actions)
                 else
                     actions.active.usable = (pfUI and pfUI.bars) and nil or 1
                 end
-            elseif actions.active.inRange ~= 0 and not actions.active.oom then
+            elseif actions.active.inRange ~= 0 and not actions.active.oom and not onCooldown then
                 actions.active.usable = 1
 
             -- pfUI:actionbar.lua -- update usable [out-of-range = 1, oom = 2, not-usable = 3, default = 0]
@@ -614,7 +617,8 @@ function CleveRoids.ParseMsg(msg)
                         arg_for_find = string.gsub(arg_for_find, "^#(%d+)$", "=#%1")
                         arg_for_find = string.gsub(arg_for_find, "([^>~=<]+)#(%d+)", "%1=#%2")
 
-                        local _, _, name, operator, amount = string.find(arg_for_find, "([^>~=<]*)([>~=<]+)(#?%d+)")
+                        -- FIXED: This regex now accepts decimal numbers
+                        local _, _, name, operator, amount = string.find(arg_for_find, "([^>~=<]*)([>~=<]+)(#?%d*%.?%d+)")
                         if not operator or not amount then
                             table.insert(conditionals[condition], processed_arg)
                         else
