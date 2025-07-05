@@ -707,10 +707,7 @@ function CleveRoids.TestAction(cmd, args)
 
 
     if conditionals.target == "mouseover" then
-        if not UnitExists("mouseover") then
-            conditionals.target = "mouseover"
-        else
-            conditionals.target = origTarget
+        if not CleveRoids.IsValidTarget("mouseover", conditionals.help) then
             return false
         end
     end
