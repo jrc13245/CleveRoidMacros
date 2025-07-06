@@ -13,20 +13,16 @@ SLASH_RELOAD1 = "/rl"
 
 SlashCmdList.RELOAD = function() ReloadUI(); end
 
-local function UseWrapper(msg)
-    CleveRoids.DoUse(msg)
-end
-
 SLASH_USE1 = "/use"
 
-SlashCmdList.USE = UseWrapper
+SlashCmdList.USE = CleveRoids.DoUse
 
 SLASH_EQUIP1 = "/equip"
 
-SlashCmdList.EQUIP = UseWrapper
+SlashCmdList.EQUIP = CleveRoids.DoUse
 -- take back supermacro and pfUI /equip
-SlashCmdList.SMEQUIP = UseWrapper
-SlashCmdList.PFEQUIP = UseWrapper
+SlashCmdList.SMEQUIP = CleveRoids.DoUse
+SlashCmdList.PFEQUIP = CleveRoids.DoUse
 
 SLASH_EQUIPMH1 = "/equipmh"
 SlashCmdList.EQUIPMH = CleveRoids.DoEquipMainhand

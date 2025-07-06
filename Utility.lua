@@ -162,10 +162,6 @@ function CleveRoids.PrintT(t, depth)
     end
 end
 
-print = CleveRoids.Print
-iprint = CleveRoids.PrintI
-tprint = CleveRoids.PrintT
-
 CleveRoids.kmods = {
     ctrl  = IsControlKeyDown,
     alt   = IsAltKeyDown,

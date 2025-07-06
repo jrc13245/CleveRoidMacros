@@ -9,6 +9,13 @@ local CleveRoids = _G.CleveRoids or {}
 _G.CleveRoids = CleveRoids
 CleveRoids.lastItemIndexTime = 0
 CleveRoids.initializationTimer = nil
+CleveRoids.isActionUpdateQueued = true -- Flag to check if a full action update is needed
+
+-- Queues a full update of all action bars.
+-- This is called by game event handlers to avoid running heavy logic inside the event itself.
+function CleveRoids.QueueActionUpdate()
+    CleveRoids.isActionUpdateQueued = true
+end
 
 function CleveRoids.GetSpellCost(spellSlot, bookType)
     CleveRoids.Frame:SetOwner(WorldFrame, "ANCHOR_NONE")
@@ -1229,25 +1236,30 @@ function CleveRoids.OnUpdate(self)
         CleveRoids.ready = true
         CleveRoids.initializationTimer = nil
         CleveRoids.TestForAllActiveActions()
-
         CleveRoids.lastUpdate = time
         return
     end
 
-    -- make sure spells and items have been parsed
     if not CleveRoids.ready then return end
 
-    -- Slow down a bit.
+    -- Throttle the OnUpdate loop to avoid excessive CPU usage.
     if (time - CleveRoids.lastUpdate) < 0.2 then return end
     CleveRoids.lastUpdate = time
 
+    -- If a game event has queued an update, run the expensive check.
+    if CleveRoids.isActionUpdateQueued then
+        CleveRoids.TestForAllActiveActions()
+        CleveRoids.isActionUpdateQueued = false -- Reset the flag
+    end
+
+    -- The rest of this function handles logic that MUST be time-based.
     if CleveRoids.CurrentSpell.autoAttackLock and (time - CleveRoids.autoAttackLockElapsed) > 0.2 then
         CleveRoids.CurrentSpell.autoAttackLock = false
         CleveRoids.CurrentSpell.autoAttackLockElapsed = nil
     end
 
     for _, sequence in pairs(CleveRoids.Sequences) do
-        if sequence.index > 1 and sequence.reset.secs and (time - sequence.lastUpdate) >= sequence.reset.secs then
+        if sequence.index > 1 and sequence.reset.secs and (time - (sequence.lastUpdate or 0)) >= sequence.reset.secs then
             CleveRoids.ResetSequence(sequence)
         end
     end
@@ -1257,7 +1269,6 @@ function CleveRoids.OnUpdate(self)
             CleveRoids.spell_tracking[guid] = nil
         end
     end
-    CleveRoids.TestForAllActiveActions()
 end
 
 -- Initialize the nested table for the GameTooltip hooks if it doesn't exist
@@ -1527,27 +1538,31 @@ CleveRoids.Frame:SetScript("OnEvent", function(...)
     CleveRoids.Frame[event](this,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10)
 end)
 
+-- == CORE EVENT REGISTRATION ==
 CleveRoids.Frame:RegisterEvent("PLAYER_LOGIN")
 CleveRoids.Frame:RegisterEvent("ADDON_LOADED")
-CleveRoids.Frame:RegisterEvent("SPELLCAST_CHANNEL_START")
-CleveRoids.Frame:RegisterEvent("SPELLCAST_CHANNEL_STOP")
--- CleveRoids.Frame:RegisterEvent("SPELLCAST_START")
--- CleveRoids.Frame:RegisterEvent("SPELLCAST_STOP")
--- CleveRoids.Frame:RegisterEvent("SPELLCAST_INTERRUPTED")
--- CleveRoids.Frame:RegisterEvent("SPELLCAST_FAILED")
-CleveRoids.Frame:RegisterEvent("UNIT_CASTEVENT")
-CleveRoids.Frame:RegisterEvent("PLAYER_ENTER_COMBAT")
-CleveRoids.Frame:RegisterEvent("PLAYER_LEAVE_COMBAT")
--- CleveRoids.Frame:RegisterEvent("PLAYER_REGEN_ENABLED")
-CleveRoids.Frame:RegisterEvent("PLAYER_TARGET_CHANGED")
-CleveRoids.Frame:RegisterEvent("START_AUTOREPEAT_SPELL")
-CleveRoids.Frame:RegisterEvent("STOP_AUTOREPEAT_SPELL")
--- CleveRoids.Frame:RegisterEvent("UI_ERROR_MESSAGE")
 CleveRoids.Frame:RegisterEvent("UPDATE_MACROS")
-CleveRoids.Frame:RegisterEvent("ACTIONBAR_SLOT_CHANGED")
 CleveRoids.Frame:RegisterEvent("SPELLS_CHANGED")
+CleveRoids.Frame:RegisterEvent("ACTIONBAR_SLOT_CHANGED")
 CleveRoids.Frame:RegisterEvent("BAG_UPDATE")
 CleveRoids.Frame:RegisterEvent("UNIT_INVENTORY_CHANGED")
+
+-- == STATE CHANGE EVENT REGISTRATION (for performance) ==
+CleveRoids.Frame:RegisterEvent("PLAYER_TARGET_CHANGED")
+CleveRoids.Frame:RegisterEvent("PLAYER_FOCUS_CHANGED") -- For focus addons
+CleveRoids.Frame:RegisterEvent("PLAYER_ENTER_COMBAT")
+CleveRoids.Frame:RegisterEvent("PLAYER_LEAVE_COMBAT")
+CleveRoids.Frame:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
+CleveRoids.Frame:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+CleveRoids.Frame:RegisterEvent("UNIT_AURA")
+CleveRoids.Frame:RegisterEvent("UNIT_HEALTH")
+CleveRoids.Frame:RegisterEvent("UNIT_POWER")
+CleveRoids.Frame:RegisterEvent("UNIT_CASTEVENT")
+CleveRoids.Frame:RegisterEvent("START_AUTOREPEAT_SPELL")
+CleveRoids.Frame:RegisterEvent("STOP_AUTOREPEAT_SPELL")
+CleveRoids.Frame:RegisterEvent("SPELLCAST_CHANNEL_START")
+CleveRoids.Frame:RegisterEvent("SPELLCAST_CHANNEL_STOP")
+
 
 function CleveRoids.Frame:PLAYER_LOGIN()
     _, CleveRoids.playerClass = UnitClass("player")
@@ -1641,20 +1656,25 @@ function CleveRoids.Frame:UNIT_CASTEVENT(caster,target,action,spell_id,cast_time
             end
         end
     end
+
+    CleveRoids.QueueActionUpdate()
 end
 
 function CleveRoids.Frame:SPELLCAST_CHANNEL_START()
     CleveRoids.CurrentSpell.type = "channeled"
+    CleveRoids.QueueActionUpdate()
 end
 
 function CleveRoids.Frame:SPELLCAST_CHANNEL_STOP()
     CleveRoids.CurrentSpell.type = ""
     CleveRoids.CurrentSpell.spellName = ""
+    CleveRoids.QueueActionUpdate()
 end
 
 function CleveRoids.Frame:PLAYER_ENTER_COMBAT()
     CleveRoids.CurrentSpell.autoAttack = true
     CleveRoids.CurrentSpell.autoAttackLock = false
+    CleveRoids.QueueActionUpdate()
 end
 
 function CleveRoids.Frame:PLAYER_LEAVE_COMBAT()
@@ -1665,9 +1685,9 @@ function CleveRoids.Frame:PLAYER_LEAVE_COMBAT()
             CleveRoids.ResetSequence(sequence)
         end
     end
+    CleveRoids.QueueActionUpdate()
 end
 
--- just a secondary check, shouldn't matter much
 function CleveRoids.Frame:PLAYER_TARGET_CHANGED()
     CleveRoids.CurrentSpell.autoAttack = false
     CleveRoids.CurrentSpell.autoAttackLock = false
@@ -1677,6 +1697,7 @@ function CleveRoids.Frame:PLAYER_TARGET_CHANGED()
             CleveRoids.ResetSequence(sequence)
         end
     end
+    CleveRoids.QueueActionUpdate()
 end
 
 function CleveRoids.Frame:UPDATE_MACROS()
@@ -1697,6 +1718,7 @@ function CleveRoids.Frame:UPDATE_MACROS()
     CleveRoids.IndexSpells()
     CleveRoids.IndexTalents()
     CleveRoids.IndexActionBars()
+    CleveRoids.QueueActionUpdate()
 end
 
 function CleveRoids.Frame:SPELLS_CHANGED()
@@ -1706,6 +1728,7 @@ end
 function CleveRoids.Frame:ACTIONBAR_SLOT_CHANGED()
     CleveRoids.ClearAction(arg1)
     CleveRoids.IndexActionSlot(arg1)
+    CleveRoids.QueueActionUpdate()
 end
 
 function CleveRoids.Frame:BAG_UPDATE()
@@ -1719,37 +1742,14 @@ function CleveRoids.Frame:BAG_UPDATE()
         CleveRoids.Actions = {}
         CleveRoids.Macros = {}
         CleveRoids.ParsedMsg = {}
-        for i=1, 120 do
-            CleveRoids.SendEventForAction(i, "ACTIONBAR_SLOT_CHANGED", i)
-        end
+        CleveRoids.QueueActionUpdate()
     end
 end
 
 function CleveRoids.Frame:UNIT_INVENTORY_CHANGED()
-    if arg1 ~= "player" then
-        return
-    end
-
-    local now = GetTime()
-    -- Only index items if more than 1 second has passed since the last index
-    if (now - (CleveRoids.lastItemIndexTime or 0)) > 1.0 then
-        CleveRoids.lastItemIndexTime = now
-        CleveRoids.IndexItems()
-
-        -- Directly clear all relevant caches and force a UI refresh for all buttons.
-        CleveRoids.Actions = {}
-        CleveRoids.Macros = {}
-        CleveRoids.ParsedMsg = {}
-        for i=1, 120 do
-            CleveRoids.SendEventForAction(i, "ACTIONBAR_SLOT_CHANGED", i)
-        end
-    end
+    if arg1 ~= "player" then return end
+    CleveRoids.Frame:BAG_UPDATE()
 end
-
--- just a secondary check
--- function CleveRoids.Frame:PLAYER_REGEN_ENABLED()
---     CleveRoids.CurrentSpell.autoAttack = false
--- end
 
 function CleveRoids.Frame:START_AUTOREPEAT_SPELL()
     local _, className = UnitClass("player")
@@ -1758,6 +1758,7 @@ function CleveRoids.Frame:START_AUTOREPEAT_SPELL()
     else
         CleveRoids.CurrentSpell.wand = true
     end
+    CleveRoids.QueueActionUpdate()
 end
 
 function CleveRoids.Frame:STOP_AUTOREPEAT_SPELL()
@@ -1767,7 +1768,16 @@ function CleveRoids.Frame:STOP_AUTOREPEAT_SPELL()
     else
         CleveRoids.CurrentSpell.wand = false
     end
+    CleveRoids.QueueActionUpdate()
 end
+
+-- Generic event handlers that just queue an update
+function CleveRoids.Frame:PLAYER_FOCUS_CHANGED() CleveRoids.QueueActionUpdate() end
+function CleveRoids.Frame:UPDATE_SHAPESHIFT_FORM() CleveRoids.QueueActionUpdate() end
+function CleveRoids.Frame:SPELL_UPDATE_COOLDOWN() CleveRoids.QueueActionUpdate() end
+function CleveRoids.Frame:UNIT_AURA() CleveRoids.QueueActionUpdate() end
+function CleveRoids.Frame:UNIT_HEALTH() CleveRoids.QueueActionUpdate() end
+function CleveRoids.Frame:UNIT_POWER() CleveRoids.QueueActionUpdate() end
 
 
 CleveRoids.Hooks.SendChatMessage = SendChatMessage
