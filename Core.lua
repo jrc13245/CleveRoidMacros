@@ -568,16 +568,16 @@ function CleveRoids.ParseMsg(msg)
 
     -- Store the action along with the conditionals incase it's needed
     conditionals.action = action
-    local action_for_known = string.gsub(action, "%(Rank %d+%)", "")
+    action = string.gsub(action, "%(Rank %d+%)", "")
 
     if noSpam and noSpam ~= "" then
-        local spamCond = CleveRoids.GetSpammableConditional(action_for_known)
+        local spamCond = CleveRoids.GetSpammableConditional(action)
         if spamCond then
-            conditionals[spamCond] = { action_for_known }
+            conditionals[spamCond] = { action }
         end
     end
     if cancelAura and cancelAura ~= "" then
-        conditionals.cancelaura = action_for_known
+        conditionals.cancelaura = action
     end
 
     if not conditionBlock then
@@ -599,21 +599,28 @@ function CleveRoids.ParseMsg(msg)
                 local conditionGroup = CleveRoids.splitStringIgnoringQuotes(conditionGroups, ":")
                 local condition, args = conditionGroup[1], conditionGroup[2]
 
-                -- *** NEW SIMPLIFIED LOGIC ***
-                -- Ensure the conditional key always exists as a table.
-                if not conditionals[condition] then
-                    conditionals[condition] = {}
-                end
-
+                -- No args, the action is the implicit argument
                 if not args or args == "" then
-                    -- This is a no-argument conditional, like [known] or [combat].
-                    -- We insert a placeholder value. The keyword handler will know what it means.
-                    local value_to_insert = (condition == "known" or condition == "noknown") and action_for_known or true
-                    table.insert(conditionals[condition], value_to_insert)
+                    if not conditionals[condition] then
+                        conditionals[condition] = action
+                    else
+                        if type(conditionals[condition]) ~= "table" then
+                           conditionals[condition] = { conditionals[condition] }
+                        end
+                        table.insert(conditionals[condition], action)
+                    end
                 else
-                    -- This is a conditional with arguments.
+                    -- Has args. Ensure the key's value is a table and add the new arguments.
+                    if not conditionals[condition] then
+                        conditionals[condition] = {}
+                    elseif type(conditionals[condition]) ~= "table" then
+                        conditionals[condition] = { conditionals[condition] }
+                    end
+
+                    -- Split the args by / for multiple values
                     for _, arg_item in CleveRoids.splitString(args, "/") do
                         local processed_arg = CleveRoids.Trim(arg_item)
+
                         processed_arg = string.gsub(processed_arg, '"', "")
                         processed_arg = string.gsub(processed_arg, "_", " ")
                         processed_arg = CleveRoids.Trim(processed_arg)
@@ -622,13 +629,13 @@ function CleveRoids.ParseMsg(msg)
                         arg_for_find = string.gsub(arg_for_find, "^#(%d+)$", "=#%1")
                         arg_for_find = string.gsub(arg_for_find, "([^>~=<]+)#(%d+)", "%1=#%2")
 
+                        -- FIXED: This regex now accepts decimal numbers
                         local _, _, name, operator, amount = string.find(arg_for_find, "([^>~=<]*)([>~=<]+)(#?%d*%.?%d+)")
                         if not operator or not amount then
-                            -- This is a simple string argument, e.g., [stance:1] or [known:spell]
                             table.insert(conditionals[condition], processed_arg)
                         else
-                            -- This is a complex argument with a comparator, e.g., [hp:>50]
-                            local name_to_use = (name and name ~= "") and name or action_for_known
+                            local name_to_use = (name and name ~= "") and name or conditionals.action
+
                             local final_amount_str, num_replacements = string.gsub(amount, "#", "")
                             local should_check_stacks = (num_replacements == 1)
 

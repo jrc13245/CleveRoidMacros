@@ -648,24 +648,20 @@ CleveRoids.Keywords = {
     end,
 
     mod = function(conditionals)
-        -- [mod] or [mod:shift] implies OR logic. Is ANY specified mod key down?
+        if type(conditionals.mod) ~= "table" then
+            return CleveRoids.kmods.mod()
+        end
         return Or(conditionals.mod, function(mod)
-            if mod == true then -- This is the placeholder for a generic [mod]
-                return CleveRoids.kmods.mod()
-            else
-                return CleveRoids.kmods[mod]()
-            end
+            return CleveRoids.kmods[mod]()
         end)
     end,
 
     nomod = function(conditionals)
-        -- [nomod] AND [nomod:shift] implies AND logic. Are ALL specified keys UP?
+        if type(conditionals.nomod) ~= "table" then
+            return CleveRoids.kmods.nomod()
+        end
         return And(conditionals.nomod, function(mod)
-            if mod == true then -- This is the placeholder for a generic [nomod]
-                return CleveRoids.kmods.nomod()
-            else
-                return not CleveRoids.kmods[mod]()
-            end
+            return not CleveRoids.kmods[mod]()
         end)
     end,
 
@@ -696,23 +692,16 @@ CleveRoids.Keywords = {
     end,
 
     casting = function(conditionals)
-        -- [casting] or [casting:spell] implies OR logic. Is target casting ANY of these?
+        if type(conditionals.casting) ~= "table" then return CleveRoids.CheckSpellCast(conditionals.target, "") end
         return Or(conditionals.casting, function (spell)
-            if spell == true then -- Placeholder for generic [casting]
-                return CleveRoids.CheckSpellCast(conditionals.target, "")
-            else
-                return CleveRoids.CheckSpellCast(conditionals.target, spell)
-            end
+            return CleveRoids.CheckSpellCast(conditionals.target, spell)
         end)
     end,
 
     nocasting = function(conditionals)
+        if type(conditionals.nocasting) ~= "table" then return CleveRoids.CheckSpellCast(conditionals.target, "") end
         return And(conditionals.nocasting, function (spell)
-            if spell == true then -- Placeholder for generic [nocasting]
-                 return not CleveRoids.CheckSpellCast(conditionals.target, "")
-            else
-                 return not CleveRoids.CheckSpellCast(conditionals.target, spell)
-            end
+            return not CleveRoids.CheckSpellCast(conditionals.target, spell)
         end)
     end,
 
@@ -789,10 +778,11 @@ CleveRoids.Keywords = {
     end,
 
     group = function(conditionals)
+        if type(conditionals.group) ~= "table" then
+            conditionals.group = { "party", "raid" }
+        end
         return Or(conditionals.group, function(groups)
-            if groups == true then -- Placeholder for generic [group]
-                return GetNumPartyMembers() > 0 or GetNumRaidMembers() > 0
-            elseif groups == "party" then
+            if groups == "party" then
                 return GetNumPartyMembers() > 0
             elseif groups == "raid" then
                 return GetNumRaidMembers() > 0
@@ -1029,15 +1019,12 @@ CleveRoids.Keywords = {
     end,
 
     known = function(conditionals)
-        -- All 'known' checks are combined into one list by the new parser.
-        -- A macro condition [cond1, cond2] implies AND.
         return And(conditionals.known, function(args)
             return CleveRoids.ValidateKnown(args)
         end)
     end,
 
     noknown = function(conditionals)
-        -- All 'noknown' checks are combined into one list by the new parser.
         return And(conditionals.noknown, function(args)
             return not CleveRoids.ValidateKnown(args)
         end)
