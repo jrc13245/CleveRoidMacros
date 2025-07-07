@@ -106,7 +106,7 @@ function CleveRoids.TestForActiveAction(actions)
                 else
                     actions.active.usable = (pfUI and pfUI.bars) and nil or 1
                 end
-            elseif actions.active.inRange ~= 0 and not actions.active.oom and not onCooldown then
+            elseif actions.active.inRange ~= 0 and not actions.active.oom then
                 actions.active.usable = 1
 
             -- pfUI:actionbar.lua -- update usable [out-of-range = 1, oom = 2, not-usable = 3, default = 0]
