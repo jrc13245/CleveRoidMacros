@@ -901,34 +901,73 @@ end
 
 -- Attempts to target a unit by its name using a set of conditionals
 -- msg: The raw message intercepted from a /target command
-function CleveRoids.DoTarget(msg)
-    local handled = false
+-- This is the final, corrected function for /target
 
-    local action = function(msg)
-        if string.sub(msg, 1, 1) == "@" then
-            local unit = string.sub(msg, 2)
-            if CleveRoids.hasSuperwow then
-                local _, guid = UnitExists(unit)
-                if guid then TargetUnit(guid) end
-            else
-                CleveRoids.Hooks.TARGET_SlashCmd(UnitName(unit))
+function CleveRoids.DoTarget(msg)
+    local action, conditionals = CleveRoids.GetParsedMsg(msg)
+
+    -- This is a small helper function to loop through and validate all conditionals.
+    local function AreConditionsMet(conds)
+        if not next(conds) then return true end -- No conditionals means they are met.
+        for k, v in pairs(conds) do
+            if not CleveRoids.ignoreKeywords[k] then
+                if not CleveRoids.Keywords[k] or not CleveRoids.Keywords[k](conds) then
+                    return false -- A condition failed.
+                end
             end
         end
+        return true -- All conditions passed.
     end
 
-    for k, v in CleveRoids.splitStringIgnoringQuotes(msg) do
-        local _, cPos, anyCond = string.find(v, "(%[.*%])")
-        local _, _, atTarget = string.find(v, "%s*@([^%s]+)%s*$", (cPos and cPos+1 or 1))
-        if atTarget then handled = true end
-        if atTarget and not anyCond then
-            v = "[@"..atTarget.."] "..v
+
+    -- Case 1: Command has conditionals but NO target name (e.g., /target [harm]).
+    -- Goal: If current target is invalid, target nearest appropriate unit.
+    if action == "" and next(conditionals) ~= nil then
+        local targetIsValid = false
+        if UnitExists("target") then
+            conditionals.target = "target"
+            if AreConditionsMet(conditionals) then
+                targetIsValid = true
+            end
         end
-        if CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.TARGET_SlashCmd, CleveRoids.FixEmptyTargetSetTarget, false, action) then
-            handled = true
-            break
+
+        -- If we don't have a valid target, find a new one.
+        if not targetIsValid then
+            if conditionals.help then
+                TargetNearestFriend()
+            else -- Default to targeting an enemy if [help] is not specified.
+                TargetNearestEnemy()
+            end
         end
+        return true -- Command is handled.
     end
-    return handled
+
+
+    -- Case 2: Command has a target name (e.g., /target [harm] Name).
+    -- Goal: Target the named unit, and if it's invalid, revert to the last target.
+    if action ~= "" and next(conditionals) ~= nil then
+        -- The only way to check a named unit is to target it first.
+        TargetByName(action)
+
+        -- After trying to target, check if the new target is valid.
+        if UnitExists("target") then
+            conditionals.target = "target"
+            if not AreConditionsMet(conditionals) then
+                -- The new target does not meet the conditions, so revert.
+                TargetLastTarget()
+            end
+        else
+            -- TargetByName failed to find anyone, so revert to clear the target
+            -- or restore the previous one if we had one.
+            TargetLastTarget()
+        end
+        return true -- Command is handled.
+    end
+
+
+    -- Fallback for all simple, non-conditional commands (e.g., /target player).
+    CleveRoids.Hooks.TARGET_SlashCmd(msg)
+    return true
 end
 
 -- Attempts to attack a unit by a set of conditionals
