@@ -139,7 +139,7 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 ## Slash Commands
 | Command               | Conditionals Supported | Purpose |
 |-----------------------|          :-:           |---------|
-| /target               |  | takes limited conditionals (help,harm,alive,dead,exists,isplayer,isnpc,type,(no)inrange,(no(de))buff,(raw)hp,(raw)power,(no)casting) |
+| /target               |  | takes limited conditionals. will target by name first and then if conditionals are not valid will target your last target or clear target. help/harm check in a 40 yd cone in front of you. this is due to client limitations. available conditionals: (help,harm,alive,dead,exists,isplayer,isnpc,type,(no)inrange,(no(de))buff,(raw)hp,(raw)power,(no)casting) |
 | /retarget             |   | Clears your target if it doesn't exist, has 0 hp or if you can't attack it and then targets the nearest enemy. |
 | /startattack          | * | Starts auto-attacking. |
 | /stopattack           | * | Stops auto-attacking. |
