@@ -1075,15 +1075,36 @@ function CleveRoids.DoUse(msg)
     return handled -- Corrected typo from 'Handled' to 'handled'
 end
 
-
 function CleveRoids.EquipBagItem(msg, offhand)
-    local item = CleveRoids.GetItem(msg)
+    -- START of NEW and IMPROVED FIX
 
-    if not item or (not item.bagID and not item.inventoryID) then
+    -- First, get item data from the addon's own reliable cache.
+    local item = CleveRoids.GetItem(msg)
+    if not item or not item.name then
+        -- If the addon can't find the item at all, do nothing.
         return false
     end
 
-    local invslot = offhand and 17 or 16
+    local invslot = offhand and 17 or 16 -- 17 is off-hand, 16 is main-hand
+
+    -- Now, check the currently equipped item using live game data.
+    local currentItemLink = GetInventoryItemLink("player", invslot)
+    if currentItemLink then
+        local currentItemName = GetItemInfo(currentItemLink)
+        if currentItemName and currentItemName == item.name then
+            -- The correct item is already in the correct slot. Stop here.
+            return true
+        end
+    end
+    -- END of NEW and IMPROVED FIX
+
+
+    -- If the check above fails, proceed with the original logic to equip the item.
+    -- We can reuse the 'item' object we already found.
+    if not item.bagID and not item.inventoryID then
+        return false
+    end
+
     if item.bagID then
         CleveRoids.GetNextBagSlotForUse(item, msg)
         PickupContainerItem(item.bagID, item.slot)
