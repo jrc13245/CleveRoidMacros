@@ -74,7 +74,8 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 * Updated ! flag as a shortcut easily make spammable spells.
 * Added ~ flag to either cast or cancel the buff/aura if possible.  (Toggles the spell on/off)
 * Added /stopmacro command. 
-
+* Added conditional use to /startattack /stopattack /stopcasting.
+* Added stat conditional. ex: '/cast [hp:<=20 stat:AP>=2000]Bloodthirst'
 ## Dynamic Icons and Tooltips
 * The icon and tooltip for a macro will automatically update to the first true condition's action.  Left to right, top to bottom.
 * Consumables and certain other item types will now show a count on the action bar.
