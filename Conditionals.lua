@@ -5,6 +5,46 @@
 local _G = _G or getfenv(0)
 local CleveRoids = _G.CleveRoids or {}
 
+--This table maps stat keys to the functions that retrieve their values.
+local stat_checks = {
+    -- Base Stats (Corrected to use the 'effective' stat with gear)
+    str = function() local _, effective = UnitStat("player", 1); return effective end,
+    strength = function() local _, effective = UnitStat("player", 1); return effective end,
+    agi = function() local _, effective = UnitStat("player", 2); return effective end,
+    agility = function() local _, effective = UnitStat("player", 2); return effective end,
+    stam = function() local _, effective = UnitStat("player", 3); return effective end,
+    stamina = function() local _, effective = UnitStat("player", 3); return effective end,
+    int = function() local _, effective = UnitStat("player", 4); return effective end,
+    intellect = function() local _, effective = UnitStat("player", 4); return effective end,
+    spi = function() local _, effective = UnitStat("player", 5); return effective end,
+    spirit = function() local _, effective = UnitStat("player", 5); return effective end,
+
+    -- Combat Ratings (Corrected to use UnitAttackPower and UnitRangedAttackPower)
+    ap = function() local base, pos, neg = UnitAttackPower("player"); return base + pos + neg end,
+    attackpower = function() local base, pos, neg = UnitAttackPower("player"); return base + pos + neg end,
+    rap = function() local base, pos, neg = UnitRangedAttackPower("player"); return base + pos + neg end,
+    rangedattackpower = function() local base, pos, neg = UnitRangedAttackPower("player"); return base + pos + neg end,
+    healing = function() return GetBonusHealing() end,
+    healingpower = function() return GetBonusHealing() end,
+
+    -- Bonus Spell Damage by School
+    arcane_power = function() return GetSpellBonusDamage(6) end,
+    fire_power = function() return GetSpellBonusDamage(3) end,
+    frost_power = function() return GetSpellBonusDamage(4) end,
+    nature_power = function() return GetSpellBonusDamage(2) end,
+    shadow_power = function() return GetSpellBonusDamage(5) end,
+
+    -- Defensive Stats
+    armor = function() local _, effective = UnitArmor("player"); return effective end,
+    defense = function() return GetDefense() end,
+
+    -- Resistances
+    arcane_res = function() local _, val = UnitResistance("player", 7); return val end,
+    fire_res = function() local _, val = UnitResistance("player", 3); return val end,
+    frost_res = function() local _, val = UnitResistance("player", 5); return val end,
+    nature_res = function() local _, val = UnitResistance("player", 4); return val end,
+    shadow_res = function() local _, val = UnitResistance("player", 6); return val end
+}
 
 local function And(t,func)
     if type(func) ~= "function" then return false end
@@ -1037,4 +1077,25 @@ CleveRoids.Keywords = {
     noresting = function()
         return IsResting() == nil
     end,
+
+    stat = function(conditionals)
+        return And(conditionals.stat, function(args)
+            if type(args) ~= "table" or not args.name or not args.operator or not args.amount then
+                return false -- Malformed arguments from the parser.
+            end
+
+            local stat_key = string.lower(args.name)
+            local get_stat_func = stat_checks[stat_key]
+
+            if not get_stat_func then
+                return false -- The requested stat key is invalid.
+            end
+
+            local current_value = get_stat_func()
+            if not current_value then return false end
+
+            -- Use the addon's existing logic to compare the numbers.
+            return CleveRoids.comparators[args.operator](current_value, args.amount)
+        end)
+    end
 }
