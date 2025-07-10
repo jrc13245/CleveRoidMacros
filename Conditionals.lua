@@ -981,7 +981,7 @@ CleveRoids.Keywords = {
     end,
 
     cooldown = function(conditionals)
-        return Or(conditionals.cooldown,function (v)
+        return And(conditionals.cooldown,function (v)
             return CleveRoids.ValidateCooldown(v, true)
         end)
     end,
