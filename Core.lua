@@ -1512,8 +1512,10 @@ end
 CleveRoids.Hooks.GetActionCooldown = GetActionCooldown
 function GetActionCooldown(slot)
     local actions = CleveRoids.GetAction(slot)
-    if actions and actions.active then
-        local a = actions.active
+    -- Check for actions.active OR actions.tooltip
+    if actions and (actions.active or actions.tooltip) then
+        -- Prioritize the active action, but fall back to the tooltip action
+        local a = actions.active or actions.tooltip
 
         local slotId = tonumber(a.action)
         if slotId and slotId >= 1 and slotId <= 19 then
