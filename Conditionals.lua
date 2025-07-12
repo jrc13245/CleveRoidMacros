@@ -527,8 +527,91 @@ end
 function CleveRoids.ValidateUnitBuff(unit, args)
     return CleveRoids.ValidateAura(unit, args, true)
 end
+
 function CleveRoids.ValidateUnitDebuff(unit, args)
-    return CleveRoids.ValidateAura(unit, args, false)
+    if not args or not UnitExists(unit) then return false end
+
+    if type(args) ~= "table" then
+        args = {name = args}
+    end
+
+    local found = false
+    local texture, stacks, spellID, remaining
+    local i
+
+    -- Step 1: Search DEBUFFS first
+    i = (unit == "player") and 0 or 1
+    while true do
+        if unit == "player" then
+            texture, stacks, spellID, remaining = CleveRoids.GetPlayerAura(i, false)
+        else
+            texture, stacks, _, spellID = UnitDebuff(unit, i)
+        end
+
+        if not texture then break end
+        if (CleveRoids.hasSuperwow and args.name == SpellInfo(spellID)) or (not CleveRoids.hasSuperwow and texture == CleveRoids.auraTextures[args.name]) then
+            found = true
+            break
+        end
+        i = i + 1
+    end
+
+    -- Step 2: If not found, search BUFFS
+    if not found then
+        i = (unit == "player") and 0 or 1
+        while true do
+            if unit == "player" then
+                texture, stacks, spellID, remaining = CleveRoids.GetPlayerAura(i, true)
+            else
+                texture, stacks, spellID = UnitBuff(unit, i)
+            end
+
+            if not texture then break end
+            if (CleveRoids.hasSuperwow and args.name == SpellInfo(spellID)) or (not CleveRoids.hasSuperwow and texture == CleveRoids.auraTextures[args.name]) then
+                found = true
+                break
+            end
+            i = i + 1
+        end
+    end
+
+    -- Step 3: Correctly perform conditional validation
+    local ops = CleveRoids.operators
+
+    -- Case A: No numeric/stack condition, just check for existence.
+    if not args.amount and not args.operator and not args.checkStacks then
+        return found
+    end
+
+    -- Case B: Numeric/stack condition exists.
+    if args.amount and ops[args.operator] then
+        -- If aura was found, perform the comparison on its stacks/time.
+        if found then
+            if args.checkStacks then
+                return CleveRoids.comparators[args.operator](stacks or 0, args.amount)
+            elseif unit == "player" then -- Time check only for player
+                return CleveRoids.comparators[args.operator](remaining or 0, args.amount)
+            else
+                -- This case is for a numeric check on a non-player unit that isn't a stack check.
+                -- Debuff checks on NPCs/other players are typically for existence or stacks.
+                -- Return true if found, as there's no other metric to compare.
+                return true
+            end
+        -- If aura was NOT found, compare against default values.
+        else
+            if args.checkStacks then
+                -- Compare stacks (0) against the amount. e.g., (0 < 5) is true.
+                return CleveRoids.comparators[args.operator](0, args.amount)
+            elseif unit == "player" then
+                -- Compare time (0) against the amount.
+                return CleveRoids.comparators[args.operator](0, args.amount)
+            else
+                return false
+            end
+        end
+    end
+
+    return false -- Fallback
 end
 
 function CleveRoids.ValidatePlayerBuff(args)
