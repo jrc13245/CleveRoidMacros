@@ -715,10 +715,24 @@ function CleveRoids.TestAction(cmd, args)
     end
 
     if conditionals.target == "focus" then
-        if not CleveRoids.GetFocusName() then
-            return
+        local focusUnitId = nil
+        -- First, try to get the specific UnitID from pfUI's data for reliability.
+        if pfUI and pfUI.uf and pfUI.uf.focus and pfUI.uf.focus.label and pfUI.uf.focus.id and UnitExists(pfUI.uf.focus.label .. pfUI.uf.focus.id) then
+            focusUnitId = pfUI.uf.focus.label .. pfUI.uf.focus.id
         end
-        conditionals.target = "target"
+
+        if focusUnitId then
+            -- If we found a specific unit (e.g., "party1", "raid2"), use it for the test.
+            conditionals.target = focusUnitId
+        else
+            -- If we only have a name, check if that name exists. If not, the condition fails.
+            if not CleveRoids.GetFocusName() then
+                return -- No focus exists, so this action is not valid.
+            end
+            -- Fallback for testing: We can't safely target by name here, so we default to "target".
+            -- This part of the original logic remains as a fallback, but the pfUI check above will handle most cases.
+            conditionals.target = "target"
+        end
     end
 
 
@@ -1310,6 +1324,24 @@ function CleveRoids.OnUpdate(self)
     -- Throttle the OnUpdate loop to avoid excessive CPU usage.
     if (time - CleveRoids.lastUpdate) < 0.2 then return end
     CleveRoids.lastUpdate = time
+
+        local modsChanged = false
+    if CleveRoids.kmods.shift() ~= CleveRoids.lastModifierState.shift then
+        CleveRoids.lastModifierState.shift = CleveRoids.kmods.shift()
+        modsChanged = true
+    end
+    if CleveRoids.kmods.ctrl() ~= CleveRoids.lastModifierState.ctrl then
+        CleveRoids.lastModifierState.ctrl = CleveRoids.kmods.ctrl()
+        modsChanged = true
+    end
+    if CleveRoids.kmods.alt() ~= CleveRoids.lastModifierState.alt then
+        CleveRoids.lastModifierState.alt = CleveRoids.kmods.alt()
+        modsChanged = true
+    end
+
+    if modsChanged then
+        CleveRoids.QueueActionUpdate() -- Force a refresh if modifiers changed
+    end
 
     -- If a game event has queued an update, run the expensive check.
     if CleveRoids.isActionUpdateQueued then

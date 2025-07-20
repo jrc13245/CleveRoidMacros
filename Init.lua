@@ -29,6 +29,8 @@ CleveRoids.lastUpdate = 0
 CleveRoids.lastGetItem = nil
 CleveRoids.currentSequence = nil
 
+CleveRoids.lastModifierState = {}
+
 CleveRoids.bookTypes = {BOOKTYPE_SPELL, BOOKTYPE_PET}
 CleveRoids.unknownTexture = "Interface\\Icons\\INV_Misc_QuestionMark"
 
