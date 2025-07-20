@@ -23,14 +23,14 @@ end
 -- Removes the given hook
 -- hook: The hook to remove
 function CleveRoids.RemoveHook(hook)
-    _G[hook.name] = hook.origininal
+    _G[hook.name] = hook.original
 end
 
 -- Removes the given hook from the given object
 -- object: The object to remove the hook from
 -- hook: The hook to remove
 function CleveRoids.RemoveMethodHook(object, hook)
-    object[hook.name] = hook.origininal
+    object[hook.name] = hook.original
 end
 
 -- Clears all previously declared hooks
@@ -99,7 +99,7 @@ function CleveRoids.RegisterExtension(name)
 
         local retval = hook.callback(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10)
         if not hook.dontCallOriginal then
-            retval = hook.origininal(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10)
+            retval = hook.original(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10)
         end
         return retval
     end
@@ -147,7 +147,7 @@ function CleveRoids.RegisterHook(extensionName, functionName, callbackName, dont
 
 
     extension.internal.hooks[functionName] = {
-        origininal = orig,
+        original = orig,
         callback = extension[callbackName],
         name = functionName,
         dontCallOriginal = dontCallOriginal
@@ -198,7 +198,7 @@ function CleveRoids.RegisterMethodHook(extensionName, object, functionName, call
     end
 
     extension.internal.memberHooks[object][functionName] = {
-        origininal = orig,
+        original = orig,
         callback = extension[callbackName],
         name = functionName,
         dontCallOriginal = dontCallOriginal
