@@ -813,10 +813,12 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
     end
 
     local origTarget = conditionals.target
-    if conditionals.target == "mouseover" then
-        -- The macro condition has already been validated using the cached mouseover unit.
-        -- We now assign that same cached unit for the action's execution.
+    if UnitExists("mouseover") then
+        conditionals.target = "mouseover"
+    elseif CleveRoids.mouseoverUnit and UnitExists(CleveRoids.mouseoverUnit) then
         conditionals.target = CleveRoids.mouseoverUnit
+    else
+        conditionals.target = "mouseover"
     end
 
     local needRetarget = false
