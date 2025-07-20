@@ -17,6 +17,23 @@ function CleveRoids.QueueActionUpdate()
     CleveRoids.isActionUpdateQueued = true
 end
 
+function CleveRoids.UpdateMouseoverUnit()
+    -- 1. Check the default "mouseover" unit first, as it's the fastest and most common.
+    if UnitExists("mouseover") then
+        CleveRoids.mouseoverUnit = "mouseover"
+        return
+    end
+
+    -- 2. As a fallback, check for pfUI's specific mouseover data.
+    if pfUI and pfUI.uf and pfUI.uf.mouseover and pfUI.uf.mouseover.unit and UnitExists(pfUI.uf.mouseover.unit) then
+        CleveRoids.mouseoverUnit = pfUI.uf.mouseover.unit
+        return
+    end
+
+    -- 3. If no mouseover unit is found, ensure the cache is cleared.
+    CleveRoids.mouseoverUnit = nil
+end
+
 function CleveRoids.GetSpellCost(spellSlot, bookType)
     CleveRoids.Frame:SetOwner(WorldFrame, "ANCHOR_NONE")
     CleveRoids.Frame:SetSpell(spellSlot, bookType)
@@ -797,13 +814,9 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
 
     local origTarget = conditionals.target
     if conditionals.target == "mouseover" then
-        if UnitExists("mouseover") then
-            conditionals.target = "mouseover"
-        elseif CleveRoids.mouseoverUnit and UnitExists(CleveRoids.mouseoverUnit) then
-            conditionals.target = CleveRoids.mouseoverUnit
-        else
-            conditionals.target = "mouseover"
-        end
+        -- The macro condition has already been validated using the cached mouseover unit.
+        -- We now assign that same cached unit for the action's execution.
+        conditionals.target = CleveRoids.mouseoverUnit
     end
 
     local needRetarget = false
@@ -1321,35 +1334,39 @@ function CleveRoids.OnUpdate(self)
 
     if not CleveRoids.ready then return end
 
-    -- Throttle the OnUpdate loop to avoid excessive CPU usage.
-    if (time - CleveRoids.lastUpdate) < 0.2 then return end
+    -- Throttle the OnUpdate loop to run roughly 10 times per second.
+    if (time - CleveRoids.lastUpdate) < 0.05 then return end
     CleveRoids.lastUpdate = time
 
-        local modsChanged = false
+    local oldMouseover = CleveRoids.mouseoverUnit
+    CleveRoids.UpdateMouseoverUnit()
+    if oldMouseover ~= CleveRoids.mouseoverUnit then
+        CleveRoids.QueueActionUpdate()
+    end
+
+    -- 1. Poll for modifier key changes (a non-event based condition)
+    local modsChanged = false
     if CleveRoids.kmods.shift() ~= CleveRoids.lastModifierState.shift then
-        CleveRoids.lastModifierState.shift = CleveRoids.kmods.shift()
-        modsChanged = true
+        CleveRoids.lastModifierState.shift = CleveRoids.kmods.shift(); modsChanged = true
     end
     if CleveRoids.kmods.ctrl() ~= CleveRoids.lastModifierState.ctrl then
-        CleveRoids.lastModifierState.ctrl = CleveRoids.kmods.ctrl()
-        modsChanged = true
+        CleveRoids.lastModifierState.ctrl = CleveRoids.kmods.ctrl(); modsChanged = true
     end
     if CleveRoids.kmods.alt() ~= CleveRoids.lastModifierState.alt then
-        CleveRoids.lastModifierState.alt = CleveRoids.kmods.alt()
-        modsChanged = true
+        CleveRoids.lastModifierState.alt = CleveRoids.kmods.alt(); modsChanged = true
     end
 
     if modsChanged then
-        CleveRoids.QueueActionUpdate() -- Force a refresh if modifiers changed
+        CleveRoids.QueueActionUpdate()
     end
 
-    -- If a game event has queued an update, run the expensive check.
+    -- 2. If a game event or a polled change has queued an update, run the expensive check.
     if CleveRoids.isActionUpdateQueued then
         CleveRoids.TestForAllActiveActions()
-        CleveRoids.isActionUpdateQueued = false -- Reset the flag
+        CleveRoids.isActionUpdateQueued = false -- Reset the flag after updating
     end
 
-    -- The rest of this function handles logic that MUST be time-based.
+    -- 3. The rest of this function handles logic that must be time-based.
     if CleveRoids.CurrentSpell.autoAttackLock and (time - CleveRoids.autoAttackLockElapsed) > 0.2 then
         CleveRoids.CurrentSpell.autoAttackLock = false
         CleveRoids.CurrentSpell.autoAttackLockElapsed = nil
@@ -1358,12 +1375,14 @@ function CleveRoids.OnUpdate(self)
     for _, sequence in pairs(CleveRoids.Sequences) do
         if sequence.index > 1 and sequence.reset.secs and (time - (sequence.lastUpdate or 0)) >= sequence.reset.secs then
             CleveRoids.ResetSequence(sequence)
+            CleveRoids.QueueActionUpdate() -- A timed sequence reset should update the UI
         end
     end
 
     for guid,cast in pairs(CleveRoids.spell_tracking) do
         if time > cast.expires then
             CleveRoids.spell_tracking[guid] = nil
+            CleveRoids.QueueActionUpdate() -- A cast expiring can affect [nocasting] conditions
         end
     end
 end
