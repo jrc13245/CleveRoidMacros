@@ -3,6 +3,8 @@ This was originally an effort to bring the dynamic tooltip and cast sequence fun
 
 Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https://github.com/pepopo978/nampower) are REQUIRED for full functionality.
 
+Check slash command and all conditional lists for new usages! 
+
 ---
 
 ## Installation
