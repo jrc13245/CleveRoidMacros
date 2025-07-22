@@ -260,7 +260,6 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 |----------------|---------------|  :-:  | :-:    |-----------|
 | cdgcd          | [cdgcd]<br/>[cdgcd:"Name"]<br/>[cdgcd:"Name">X] | * | * | If the Spell or Item is on cooldown and optionally if the amount of time left is >= or <= than X seconds.  **GCD NOT IGNORED** |
 | channeled      | [channeled] |  |  | If the player is currently channeling a spell. |
-| combat         | [combat] |  | * | If the player is in combat. |
 | combo          | [combo:>#3]<br/>[combo:#2]</br>[combo:<#5] |   |  * |  If the player has the specified number of combo points. |
 | cooldown       | [cooldown]<br/>[cooldown:"Name"]<br/>[cooldown:"Name"<X] | * | * | If the Spell or Item name is on cooldown and optionally if the amount of time left is >= or <= than X seconds. **GCD (if exatly 1.5 sec) IGNORED** |
 | equipped       | [equipped:"Name"]<br/>[equipped:Shields]<br/>[equipped:Daggers2] | * | * | If the player has an item name/id or item type equipped.  See [below](#weapon-types) for a list of valid Weapon Types. |
@@ -287,10 +286,11 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 ### The default @unitid is usually @target if you don't specify one
 | Conditional    | Syntax        | Multi | Noable | Tests For |
 |----------------|---------------|  :-:  | :-:    |-----------|
-| alive          | [alive]       |       |        | If the @unitid is NOT dead or a ghost. |
+| alive          | [alive]       |       |    *    | If the @unitid is NOT dead or a ghost. |
 | buff           | [buff]<br/>[buff:"Name"]<br/>[buff:"Name">#X]<br/>[buff:"Name"<X] |  | * | If the @unitid has a buff of the given name and optionally if it has >= or <= than X number of stacks. |
 | casting        | [casting]<br/>[casting:"Spell Name"] | * |  * |  If the @unitid is casting any or one or more specific spells. |
-| dead           | [dead]        |       |        | If the @unitid is dead or a ghost. |
+| combat         | [combat]<br/>[combat:target] |  | * | If the unitid (default is player) is in combat. |
+| dead           | [dead]        |       |    *    | If the @unitid is dead or a ghost. |
 | debuff         | [debuff]<br/>[debuff:"Name"]<br/>[debuff:"Name">#X]<br/>[debuff:<X] |  | * | If the @unitid has a debuff of the given name and optionally if it has >= or <= than X number of stacks. |
 | harm           | [harm]        |       |        | If the @unitid is an enemy. |
 | help           | [help]        |       |        | If the @unitid is friendly. |
@@ -308,8 +308,9 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 | rawpower       | [rawpower:>=X]<br/>[rawpower:>=X/<=Y] |  |  | The @unitid power (mana/rage/energy) compared to X. |
 | type           | [type:"Creature Type"] | * | * | If the @unitid is the specified creature type.  See [below](#creature-types) for a list of valid Creature Types. |
 | targeting      | [targeting:unitid] | * | * | If the @unitid is targeting the specified unitid.<br/>See this [article](https://wowpedia.fandom.com/wiki/UnitId) for a list of unitids.<br/>Not all units are valid in vanilla. |
-| exists         | [exists] |  |  | If the @unitid exists. |
+| exists         | [exists] |  | * | If the @unitid exists. |
 | @unitid        | [@mouseover] |  |  | The @unitid is a valid target. |
+| class          | [class:classname1/classname2]<br/>[class:Warrior/Priest] | * | * | The target is the specified class/classes. |
 
 ### Unitids
 | Name (N=party/raid slot number) |
@@ -329,6 +330,19 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 | raidNtarget |
 | targettargettarget |
 | focus (requires pfui or another addon) |
+
+### Classes
+| Class |
+|------|
+| Warrior |
+| Paladin |
+| Hunter |
+| Shaman |
+| Druid |
+| Rogue |
+| Mage |
+| Warlock |
+| Priest |
 
 ### Weapon Types
 | Name | Slot |

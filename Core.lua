@@ -1448,7 +1448,6 @@ function GameTooltip.SetAction(self, slot)
     CleveRoids.Hooks.GameTooltip.SetAction(self, slot)
 end
 
-
 CleveRoids.Hooks.PickupAction = PickupAction
 function PickupAction(slot)
     CleveRoids.ClearAction(slot)

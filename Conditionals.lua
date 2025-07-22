@@ -726,6 +726,10 @@ CleveRoids.Keywords = {
         return UnitExists(conditionals.target)
     end,
 
+    noexists = function(conditionals)
+        return not UnitExists(conditionals.target)
+    end,
+
     help = function(conditionals)
         return conditionals.help and conditionals.target and UnitExists(conditionals.target) and UnitCanAssist("player", conditionals.target)
     end,
@@ -793,11 +797,33 @@ CleveRoids.Keywords = {
     end,
 
     combat = function(conditionals)
-        return UnitAffectingCombat("player")
+        -- Check if an argument like :target or :focus was provided. The parser turns this into a table.
+        if type(conditionals.combat) == "table" then
+            -- If so, run the check on the provided unit(s).
+            return Or(conditionals.combat, function(unit)
+                return UnitExists(unit) and UnitAffectingCombat(unit)
+            end)
+        else
+            -- Otherwise, this is a bare [combat]. The value might be 'true' or a spell name.
+            -- In either case, it should safely default to checking the player.
+            return UnitAffectingCombat("player")
+        end
     end,
 
     nocombat = function(conditionals)
-        return not UnitAffectingCombat("player")
+        -- Check if an argument like :target or :focus was provided.
+        if type(conditionals.nocombat) == "table" then
+            -- If so, run the check on the provided unit(s).
+            return And(conditionals.nocombat, function(unit)
+                if not UnitExists(unit) then
+                    return true
+                end
+                return not UnitAffectingCombat(unit)
+            end)
+        else
+            -- Otherwise, this is a bare [nocombat]. Default to checking the player.
+            return not UnitAffectingCombat("player")
+        end
     end,
 
     stealth = function(conditionals)
@@ -861,6 +887,14 @@ CleveRoids.Keywords = {
     end,
 
     alive = function(conditionals)
+        return not UnitIsDeadOrGhost(conditionals.target)
+    end,
+
+    noalive = function(conditionals)
+        return UnitIsDeadOrGhost(conditionals.target)
+    end,
+
+    nodead = function(conditionals)
         return not UnitIsDeadOrGhost(conditionals.target)
     end,
 
@@ -1179,6 +1213,54 @@ CleveRoids.Keywords = {
 
             -- Use the addon's existing logic to compare the numbers.
             return CleveRoids.comparators[args.operator](current_value, args.amount)
+        end)
+    end,
+
+    class = function(conditionals)
+        -- Determine which unit to check. Defaults to 'target' if no @unitid was specified.
+        local unitToCheck = conditionals.target or "target"
+
+        -- If the unit doesn't exist, the conditional fails.
+        if not UnitExists(unitToCheck) then
+            return false
+        end
+
+        -- Get both the localized (e.g., "Mage") and English token (e.g., "MAGE") class names.
+        local localizedClass, englishClass = UnitClass(unitToCheck)
+
+        -- If the unit doesn't have a class (e.g., a critter or basic mob), the conditional fails.
+        if not localizedClass then
+            return false
+        end
+
+        -- The "Or" helper function allows for checking multiple classes, like [class:Warrior/Druid].
+        return Or(conditionals.class, function(requiredClass)
+            -- Compare the required class against both names, case-insensitively, for robustness.
+            return strlower(requiredClass) == strlower(localizedClass) or strlower(requiredClass) == strlower(englishClass)
+        end)
+    end,
+
+    noclass = function(conditionals)
+        -- Determine which unit to check. Defaults to 'target' if no @unitid was specified.
+        local unitToCheck = conditionals.target or "target"
+
+        -- If the unit doesn't exist, it can't have a class, so the condition is true.
+        if not UnitExists(unitToCheck) then
+            return true
+        end
+
+        -- Get both the localized (e.g., "Mage") and English token (e.g., "MAGE") class names.
+        local localizedClass, englishClass = UnitClass(unitToCheck)
+
+        -- If the unit doesn't have a class (e.g., a basic mob), it can't match a forbidden one.
+        if not localizedClass then
+            return true
+        end
+
+        -- The "And" helper ensures the unit's class is not any of the forbidden classes listed.
+        return And(conditionals.noclass, function(forbiddenClass)
+            -- Return true if the unit's class does NOT match the forbidden class.
+            return strlower(forbiddenClass) ~= strlower(localizedClass) and strlower(forbiddenClass) ~= strlower(englishClass)
         end)
     end
 }
