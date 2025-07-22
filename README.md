@@ -34,7 +34,10 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 
 ## Commands and Conditionals
 ### ***Important! Spells, Items, conditionals, etc are case sensitive.  Barring a bug, if there is an issue, it's almost always because something is typed incorrectly.***  
-
+* New Conditional class/noclass.
+* Conditional exists is now noable.
+* Added alive/dead alias' nodead/noalive.
+* Conditional combat can now take unitids.
 * Renamed `attacking`/`noattacking` contitionals to `targeting`/`notargeting` for better clarity of what they do.
 * All conditionals that should have an implied target of @target now do
 * Conditionals can be separated by comma or space
