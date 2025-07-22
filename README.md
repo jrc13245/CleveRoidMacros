@@ -23,6 +23,7 @@ Check slash command and all conditional lists for new usages!
 --- 
 
 ## Known Issues
+* To reduce memory usage, conditionals check updates for icons are event based. This means icons using some conditionals that arent triggered by events are slow to change. example: @unitid mod etc.
 * ALL macros must be given unique names, no blank names or muliple of the same name or using spell names. 
 * If Any of your macros have syntax errors, it will affect all macros when it comes to errors.
 * Spells with parenthesis ie: Faerie Fire (Feral) or Barkskin (Feral) MUST be written using ranks, becomming `Faerie Fire (Feral)(Rank X)`
