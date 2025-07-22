@@ -1220,22 +1220,17 @@ CleveRoids.Keywords = {
         -- Determine which unit to check. Defaults to 'target' if no @unitid was specified.
         local unitToCheck = conditionals.target or "target"
 
-        -- If the unit doesn't exist, the conditional fails.
-        if not UnitExists(unitToCheck) then
+        -- The conditional must fail if the unit doesn't exist OR is not a player.
+        if not UnitExists(unitToCheck) or not UnitIsPlayer(unitToCheck) then
             return false
         end
 
-        -- Get both the localized (e.g., "Mage") and English token (e.g., "MAGE") class names.
+        -- Get the player's class.
         local localizedClass, englishClass = UnitClass(unitToCheck)
+        if not localizedClass then return false end -- Failsafe for unusual cases
 
-        -- If the unit doesn't have a class (e.g., a critter or basic mob), the conditional fails.
-        if not localizedClass then
-            return false
-        end
-
-        -- The "Or" helper function allows for checking multiple classes, like [class:Warrior/Druid].
+        -- The "Or" helper handles multiple values like [class:Warrior/Druid].
         return Or(conditionals.class, function(requiredClass)
-            -- Compare the required class against both names, case-insensitively, for robustness.
             return strlower(requiredClass) == strlower(localizedClass) or strlower(requiredClass) == strlower(englishClass)
         end)
     end,
@@ -1244,22 +1239,23 @@ CleveRoids.Keywords = {
         -- Determine which unit to check. Defaults to 'target' if no @unitid was specified.
         local unitToCheck = conditionals.target or "target"
 
-        -- If the unit doesn't exist, it can't have a class, so the condition is true.
+        -- A unit that doesn't exist cannot have a specific player class.
         if not UnitExists(unitToCheck) then
             return true
         end
 
-        -- Get both the localized (e.g., "Mage") and English token (e.g., "MAGE") class names.
-        local localizedClass, englishClass = UnitClass(unitToCheck)
-
-        -- If the unit doesn't have a class (e.g., a basic mob), it can't match a forbidden one.
-        if not localizedClass then
+        -- An NPC cannot have a specific player class.
+        if not UnitIsPlayer(unitToCheck) then
             return true
         end
 
-        -- The "And" helper ensures the unit's class is not any of the forbidden classes listed.
+        -- If we get here, the unit is a player. Now check their class.
+        local localizedClass, englishClass = UnitClass(unitToCheck)
+        -- A player should always have a class, but if not, this condition is still met.
+        if not localizedClass then return true end
+
+        -- The "And" helper ensures the player's class is not any of the forbidden classes.
         return And(conditionals.noclass, function(forbiddenClass)
-            -- Return true if the unit's class does NOT match the forbidden class.
             return strlower(forbiddenClass) ~= strlower(localizedClass) and strlower(forbiddenClass) ~= strlower(englishClass)
         end)
     end

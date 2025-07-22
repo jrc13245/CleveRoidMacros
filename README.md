@@ -310,7 +310,7 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 | targeting      | [targeting:unitid] | * | * | If the @unitid is targeting the specified unitid.<br/>See this [article](https://wowpedia.fandom.com/wiki/UnitId) for a list of unitids.<br/>Not all units are valid in vanilla. |
 | exists         | [exists] |  | * | If the @unitid exists. |
 | @unitid        | [@mouseover] |  |  | The @unitid is a valid target. |
-| class          | [class:classname1/classname2]<br/>[class:Warrior/Priest] | * | * | The target is the specified class/classes. |
+| class          | [class:classname1/classname2]<br/>[class:Warrior/Priest] | * | * | The target is a player of the specified class/classes. |
 
 ### Unitids
 | Name (N=party/raid slot number) |
