@@ -290,6 +290,7 @@ Check slash command and all conditional lists for new usages!
 
 ### Unit Based
 ### The default @unitid is usually @target if you don't specify one
+### The only conditionals that take conditional:unitid are combat/nocombat and targeting/notargeting
 | Conditional    | Syntax        | Multi | Noable | Tests For |
 |----------------|---------------|  :-:  | :-:    |-----------|
 | alive          | [alive]       |       |    *    | If the @unitid is NOT dead or a ghost. |
@@ -303,8 +304,8 @@ Check slash command and all conditional lists for new usages!
 | hp             | [hp:>=X]<br/>[hp:>=X/<=Y] |  |  | The @unitid health **PERCENT** compared to X. |
 | hplost         | [hplost:>=X]<br/>[hplost:>=X/<=Y] |  |  | The @unitid health lost compared to X. |
 | inrange        | [inrange]<br/>[inrange:"Name"] | * | * | If the specified @unitid is in range of the spell. |
-| isnpc          | [isnpc:unitid] | * |  | If the unitid is an npc.<br/>See this [article](https://wowpedia.fandom.com/wiki/UnitId) for a list of unitids.<br/>Not all units are valid in vanilla. |
-| isplayer       | [isplayer:unitid] | * |  | If the unitid is a player.<br/>See this [article](https://wowpedia.fandom.com/wiki/UnitId) for a list of unitids.<br/>Not all units are valid in vanilla. |
+| isnpc          | [isnpc] | * |  | If the @unitid is an npc.<br/>See this [article](https://wowpedia.fandom.com/wiki/UnitId) for a list of unitids.<br/>Not all units are valid in vanilla. |
+| isplayer       | [isplayer] | * |  | If the @unitid is a player.<br/>See this [article](https://wowpedia.fandom.com/wiki/UnitId) for a list of unitids.<br/>Not all units are valid in vanilla. |
 | member         | [member]      |       |    *   | If the @unitid is in your party OR raid. |
 | party          | [party]       |       |    *   | If the @unitid is in your party. |
 | power          | [power:>=X]<br/>[power:>=X/<=Y] |  |  | The @unitid power (mana/rage/energy) **PERCENT** compared to X. |
