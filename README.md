@@ -311,6 +311,25 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 | exists         | [exists] |  |  | If the @unitid exists. |
 | @unitid        | [@mouseover] |  |  | The @unitid is a valid target. |
 
+### Unitids
+| Name |
+|------|
+| player |
+| target |
+| pet |
+| mouseover |
+| partyN |
+| partypetN |
+| raidN |
+| raidpetN |
+| targettarget |
+| playertarget |
+| pettarget |
+| partyNtarget |
+| raidNtarget |
+| targettargettarget |
+| focus (requires pfui or another addon) |
+
 ### Weapon Types
 | Name | Slot |
 |------|------|
