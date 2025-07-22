@@ -914,16 +914,16 @@ function CleveRoids.DoCast(msg)
 end
 
 -- Attempts to target a unit by its name using a set of conditionals
--- msg: The raw message intercepted from a /target command
--- This is the final, corrected function for /target
-
 function CleveRoids.DoTarget(msg)
     local action, conditionals = CleveRoids.GetParsedMsg(msg)
 
     -- This is a small helper function to loop through and validate all conditionals.
     local function AreConditionsMet(conds)
-        if not next(conds) then return true end -- No conditionals means they are met.
+        -- An empty conditional block, like in "/target []", is not valid for this logic.
+        if not next(conds) then return false end
+
         for k, v in pairs(conds) do
+            -- ignoreKeywords is used for non-conditional parts of the parser output
             if not CleveRoids.ignoreKeywords[k] then
                 if not CleveRoids.Keywords[k] or not CleveRoids.Keywords[k](conds) then
                     return false -- A condition failed.
@@ -935,18 +935,20 @@ function CleveRoids.DoTarget(msg)
 
 
     -- Case 1: Command has conditionals but NO target name (e.g., /target [harm]).
-    -- Goal: If current target is invalid, target nearest appropriate unit.
+    -- Goal: If current target is invalid or doesn't exist, target nearest appropriate unit. Otherwise, do nothing.
     if action == "" and next(conditionals) ~= nil then
-        local targetIsValid = false
+        local currentTargetIsValid = false
         if UnitExists("target") then
+            -- Temporarily set the conditionals' target to "target" to run our check
             conditionals.target = "target"
             if AreConditionsMet(conditionals) then
-                targetIsValid = true
+                currentTargetIsValid = true
             end
         end
 
-        -- If we don't have a valid target, find a new one.
-        if not targetIsValid then
+        -- If our current target is not valid (or we didn't have one), find a new one.
+        -- If the target was already valid, this block is skipped, and nothing happens.
+        if not currentTargetIsValid then
             if conditionals.help then
                 TargetNearestFriend()
             else -- Default to targeting an enemy if [help] is not specified.
@@ -959,6 +961,7 @@ function CleveRoids.DoTarget(msg)
 
     -- Case 2: Command has a target name (e.g., /target [harm] Name).
     -- Goal: Target the named unit, and if it's invalid, revert to the last target.
+    -- This logic was already sound and remains unchanged.
     if action ~= "" and next(conditionals) ~= nil then
         -- The only way to check a named unit is to target it first.
         TargetByName(action)
@@ -1820,8 +1823,8 @@ function CleveRoids.Frame:BAG_UPDATE()
 
         -- Directly clear all relevant caches and force a UI refresh for all buttons.
         CleveRoids.Actions = {}
-        CleveRoids.Macros = {}
-        CleveRoids.ParsedMsg = {}
+        --CleveRoids.Macros = {}
+        --CleveRoids.ParsedMsg = {}
         CleveRoids.QueueActionUpdate()
     end
 end

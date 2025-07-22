@@ -883,18 +883,22 @@ CleveRoids.Keywords = {
     end,
 
     dead = function(conditionals)
+        if not conditionals.target then return false end
         return UnitIsDeadOrGhost(conditionals.target)
     end,
 
     alive = function(conditionals)
+        if not conditionals.target then return false end
         return not UnitIsDeadOrGhost(conditionals.target)
     end,
 
     noalive = function(conditionals)
+        if not conditionals.target then return false end
         return UnitIsDeadOrGhost(conditionals.target)
     end,
 
     nodead = function(conditionals)
+        if not conditionals.target then return false end
         return not UnitIsDeadOrGhost(conditionals.target)
     end,
 
