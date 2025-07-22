@@ -913,17 +913,21 @@ function CleveRoids.DoCast(msg)
     return handled
 end
 
--- Attempts to target a unit by its name using a set of conditionals
+-- Attempts to target a unit based on a set of conditionals, searching for a valid unit if necessary.
 function CleveRoids.DoTarget(msg)
     local action, conditionals = CleveRoids.GetParsedMsg(msg)
 
-    -- This is a small helper function to loop through and validate all conditionals.
-    local function AreConditionsMet(conds)
-        -- An empty conditional block, like in "/target []", is not valid for this logic.
-        if not next(conds) then return false end
+    -- If the command is a simple "/target Name" or has no conditionals, let the original function handle it.
+    if action ~= "" or not next(conditionals) then
+        CleveRoids.Hooks.TARGET_SlashCmd(msg)
+        return true
+    end
 
+    -- Helper function to validate a unit against the macro's conditionals.
+    local function IsUnitValid(unitId, conds)
+        if not UnitExists(unitId) or UnitIsDeadOrGhost(unitId) then return false end
+        conds.target = unitId
         for k, v in pairs(conds) do
-            -- ignoreKeywords is used for non-conditional parts of the parser output
             if not CleveRoids.ignoreKeywords[k] then
                 if not CleveRoids.Keywords[k] or not CleveRoids.Keywords[k](conds) then
                     return false -- A condition failed.
@@ -933,57 +937,37 @@ function CleveRoids.DoTarget(msg)
         return true -- All conditions passed.
     end
 
-
-    -- Case 1: Command has conditionals but NO target name (e.g., /target [harm]).
-    -- Goal: If current target is invalid or doesn't exist, target nearest appropriate unit. Otherwise, do nothing.
-    if action == "" and next(conditionals) ~= nil then
-        local currentTargetIsValid = false
-        if UnitExists("target") then
-            -- Temporarily set the conditionals' target to "target" to run our check
-            conditionals.target = "target"
-            if AreConditionsMet(conditionals) then
-                currentTargetIsValid = true
-            end
-        end
-
-        -- If our current target is not valid (or we didn't have one), find a new one.
-        -- If the target was already valid, this block is skipped, and nothing happens.
-        if not currentTargetIsValid then
-            if conditionals.help then
-                TargetNearestFriend()
-            else -- Default to targeting an enemy if [help] is not specified.
-                TargetNearestEnemy()
-            end
-        end
-        return true -- Command is handled.
+    -- RULE 4: If current target is already valid, do nothing.
+    if IsUnitValid("target", conditionals) then
+        return true
     end
 
+    -- If we're here, the current target is invalid or missing. We need to search for a new one.
+    -- We'll revert to the last target if our search fails.
+    TargetLastTarget() -- Store current target in the "last target" buffer.
 
-    -- Case 2: Command has a target name (e.g., /target [harm] Name).
-    -- Goal: Target the named unit, and if it's invalid, revert to the last target.
-    -- This logic was already sound and remains unchanged.
-    if action ~= "" and next(conditionals) ~= nil then
-        -- The only way to check a named unit is to target it first.
-        TargetByName(action)
-
-        -- After trying to target, check if the new target is valid.
-        if UnitExists("target") then
-            conditionals.target = "target"
-            if not AreConditionsMet(conditionals) then
-                -- The new target does not meet the conditions, so revert.
-                TargetLastTarget()
+    -- Search Strategy:
+    -- 1. Search through Party and Raid frames first.
+    for i = 1, 40 do
+        local unit = (i <= 4) and "party"..i or "raid"..i
+        if IsUnitValid(unit, conditionals) then
+            if UnitIsVisible(unit) then
+                TargetUnit(unit)
+                return true -- Found a valid target in the group.
             end
-        else
-            -- TargetByName failed to find anyone, so revert to clear the target
-            -- or restore the previous one if we had one.
-            TargetLastTarget()
         end
-        return true -- Command is handled.
     end
 
+    -- 2. If no group member matched, check the nearest world enemy.
+    --    This is the only reliable way to find a non-group enemy via the API.
+    TargetNearestEnemy()
+    if IsUnitValid("target", conditionals) then
+         -- The nearest enemy is a valid target, so we keep it.
+        return true -- RULE 1: Target a world unit only if it's valid.
+    end
 
-    -- Fallback for all simple, non-conditional commands (e.g., /target player).
-    CleveRoids.Hooks.TARGET_SlashCmd(msg)
+    -- RULE 2 & 3: If the search found no valid units at all, revert to our original target.
+    TargetLastTarget()
     return true
 end
 
