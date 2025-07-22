@@ -24,9 +24,7 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 * ALL macros must be given unique names, no blank names or muliple of the same name or using spell names. 
 * If Any of your macros have syntax errors, it will affect all macros when it comes to errors.
 * Spells with parenthesis ie: Faerie Fire (Feral) or Barkskin (Feral) MUST be written using ranks, becomming `Faerie Fire (Feral)(Rank X)`
-* Medium: Because this addon is constantly checking conditions for all macros on your actionbars, if you improperly create a macro, in some certain cases it can cause strange UI issues including not displaying any icons, other macros not working or lua errors.  Fix the macro or remove it from your actionbar and it should go back to normal automatically.  Depending on the cause, you may need to reload your UI (/rl).  If you find one of these and can reproduce the issue, let me know.
-* Minor: There may be an odd interaction with [SuperWoW](https://github.com/balakethelock/SuperWoW) and/or [Nampower](https://github.com/pepopo978/nampower) and randomly seeing "Unknown Unit" on the screen -- still trying to work out the root cause.  
-* Minor: Macros will light up on the action bars the same as non-macro buttons do however if you have conditionals or more than one spell you must put the plain spell anywhere on your actionbars.  This is also true for reactive abilities for basically the same reasons.
+* Minor: If you improperly create a macro, in some certain cases it can cause strange UI issues including not displaying any icons, other macros not working or lua errors.  Fix the macro or remove it from your actionbar and it should go back to normal automatically.  Depending on the cause, you may need to reload your UI (/rl).  If you find one of these and can reproduce the issue, let me know.
 * Minor: HealComm support.  See [below](#healcomm-support)
 * I have not tested all possible combinations of conditionals or ways to break things.  Find me on Discord or open an issue if you find any bugs or have feedback.
 
@@ -136,7 +134,12 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
     /use [nomod] 5350
     /cast [mod] Conjure Water
     ```
+*Added support of using equipped items by slot number
 
+    ```lua
+    #showtooltip
+    /use 16
+    ```
 ---
 
 # Usage
