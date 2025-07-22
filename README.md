@@ -312,7 +312,7 @@ Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https:
 | @unitid        | [@mouseover] |  |  | The @unitid is a valid target. |
 
 ### Unitids
-| Name |
+| Name (N=party/raid slot number) |
 |------|
 | player |
 | target |
