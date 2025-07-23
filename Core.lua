@@ -330,19 +330,14 @@ end
 
 -- Returns the name of the focus target or nil
 function CleveRoids.GetFocusName()
-    -- 1. Add specific compatibility for pfUI.
-    -- pfUI stores its focus unit information in a table.
     if pfUI and pfUI.uf and pfUI.uf.focus and pfUI.uf.focus.unitname then
         return pfUI.uf.focus.unitname
     end
-
-    -- Fallback for other focus addons
     if ClassicFocus_CurrentFocus then
         return ClassicFocus_CurrentFocus
     elseif CURR_FOCUS_TARGET then
         return CURR_FOCUS_TARGET
     end
-
     return nil
 end
 
@@ -764,9 +759,8 @@ end
 -- msg: The conditions followed by the action's parameters
 -- hook: The hook of the function we've intercepted
 -- fixEmptyTargetFunc: A function setting the player's target if the player has none. Required to return true if we need to re-target later or false if not
--- targetBeforeAction: A boolean value that determines whether or not we need to target the target given in the conditionals before performing the given action
 -- action: A function that is being called when everything checks out
-function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBeforeAction, action)
+function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, action)
     local msg, conditionals = CleveRoids.GetParsedMsg(msg)
 
     -- No conditionals. Just exit.
@@ -796,13 +790,13 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
     end
 
     local origTarget = conditionals.target
+
+    -- NEW: Resolve mouseover target before any other checks
     if conditionals.target == "mouseover" then
         if UnitExists("mouseover") then
             conditionals.target = "mouseover"
-        elseif CleveRoids.mouseoverUnit and UnitExists(CleveRoids.mouseoverUnit) then
-            conditionals.target = CleveRoids.mouseoverUnit
-        else
-            conditionals.target = "mouseover"
+        elseif CleveRoids.nameplateMouseoverGUID and UnitExists(CleveRoids.nameplateMouseoverGUID) then
+            conditionals.target = CleveRoids.nameplateMouseoverGUID
         end
     end
 
@@ -810,8 +804,6 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
     if fixEmptyTargetFunc then
         needRetarget = fixEmptyTargetFunc(conditionals, msg, hook)
     end
-
-    -- CleveRoids.SetHelp(conditionals)
 
     if conditionals.target == "focus" then
         local focusUnitId = nil
@@ -822,12 +814,9 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
         end
 
         if focusUnitId then
-                -- If we found a valid UnitID, we will use it for all subsequent checks and the final cast.
-                -- This avoids changing the player's actual target.
             conditionals.target = focusUnitId
             needRetarget = false
         else
-            -- If the direct UnitID isn't found, fall back to the original (but likely failing) method of targeting by name.
             if not CleveRoids.TryTargetFocus() then
                 UIErrorsFrame:AddMessage(SPELL_FAILED_BAD_TARGETS, 1.0, 0.0, 0.0, 1.0)
                 conditionals.target = origTarget
@@ -851,21 +840,6 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
         end
     end
 
-    if conditionals.target ~= nil and targetBeforeAction and not (CleveRoids.hasSuperwow and action == CastSpellByName) then
-        if not UnitIsUnit("target", conditionals.target) then
-            if SpellIsTargeting() then
-                SpellStopCasting()
-            end
-            TargetUnit(conditionals.target)
-            needRetarget = true
-        else
-             if needRetarget then needRetarget = false end
-        end
-    elseif needRetarget then
-        TargetLastTarget()
-        needRetarget = false
-    end
-
     if action == "STOPMACRO" then
         CleveRoids.stopmacro = true
         return true
@@ -878,15 +852,18 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
         else
             result = CleveRoids.ExecuteMacroByName(string.sub(msg, 2, -2))
         end
-    else -- This 'else' corresponds to 'if string.sub(msg, 1, 1) == "{"...'
-        if CleveRoids.hasSuperwow and action == CastSpellByName and conditionals.target then
-            CastSpellByName(msg, conditionals.target) -- SuperWoW handles targeting via argument
-        elseif action == CastSpellByName then
-             -- For standard CastSpellByName, targeting is handled by the TargetUnit call above.
-             -- Pass only the spell name.
-            action(msg)
+    else
+        -- This is for a spell or item action
+        if action == CastSpellByName and conditionals.target then
+            -- SUPERWOW: Cast directly at the conditional target without changing player target.
+            CastSpellByName(msg, conditionals.target)
         else
-            -- For other actions like UseContainerItem etc.
+            -- For other actions (like UseItem), or for spells without a conditional target.
+            if conditionals.target and not UnitIsUnit("target", conditionals.target) then
+                 if SpellIsTargeting() then SpellStopCasting() end
+                 TargetUnit(conditionals.target)
+                 needRetarget = true
+            end
             action(msg)
         end
     end
@@ -905,7 +882,7 @@ function CleveRoids.DoCast(msg)
     local handled = false
 
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
-        if CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, not CleveRoids.hasSuperwow, CastSpellByName) then
+        if CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, CastSpellByName) then
             handled = true -- we parsed at least one command
             break
         end
@@ -997,7 +974,7 @@ function CleveRoids.DoPetAttack(msg)
     local handled = false
 
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
-        if CleveRoids.DoWithConditionals(v, PetAttack, CleveRoids.FixEmptyTarget, true, PetAttack) then
+        if CleveRoids.DoWithConditionals(v, PetAttack, CleveRoids.FixEmptyTarget, PetAttack) then
             handled = true
             break
         end
@@ -1021,7 +998,7 @@ function CleveRoids.DoConditionalStartAttack(msg)
 
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
         -- We pass 'nil' for the hook, so DoWithConditionals does nothing if it fails to parse conditionals.
-        if CleveRoids.DoWithConditionals(v, nil, CleveRoids.FixEmptyTarget, false, action) then
+        if CleveRoids.DoWithConditionals(v, nil, CleveRoids.FixEmptyTarget, action) then
             handled = true
             break
         end
@@ -1042,7 +1019,7 @@ function CleveRoids.DoConditionalStopAttack(msg)
     end
 
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
-        if CleveRoids.DoWithConditionals(v, nil, CleveRoids.FixEmptyTarget, false, action) then
+        if CleveRoids.DoWithConditionals(v, nil, CleveRoids.FixEmptyTarget, action) then
             handled = true
             break
         end
@@ -1060,7 +1037,7 @@ function CleveRoids.DoConditionalStopCasting(msg)
     end
 
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
-        if CleveRoids.DoWithConditionals(v, nil, nil, false, action) then
+        if CleveRoids.DoWithConditionals(v, nil, nil, action) then
             handled = true
             break
         end
@@ -1122,17 +1099,17 @@ function CleveRoids.DoUse(msg)
         local wasHandled = false
         -- If the subject is not a number, check if it's a spell.
         if (not tonumber(subject)) and CleveRoids.GetSpell(subject) then
-            wasHandled = CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, not CleveRoids.hasSuperwow, CastSpellByName)
+            wasHandled = CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, CastSpellByName)
         else
             -- Otherwise, treat it as an item (by name or slot ID).
-            wasHandled = CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action)
+            wasHandled = CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, action)
         end
         if wasHandled then
             handled = true
             break
         end
     end
-    return handled -- Corrected typo from 'Handled' to 'handled'
+    return handled
 end
 
 function CleveRoids.EquipBagItem(msg, offhand)
@@ -1191,7 +1168,7 @@ function CleveRoids.DoEquipMainhand(msg)
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
         v = string.gsub(v, "^%?", "")
 
-        if CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action) then
+        if CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, action) then
             handled = true
             break
         end
@@ -1209,7 +1186,7 @@ function CleveRoids.DoEquipOffhand(msg)
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
         v = string.gsub(v, "^%?", "")
 
-        if CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action) then
+        if CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, action) then
             handled = true
             break
         end
@@ -1229,7 +1206,7 @@ function CleveRoids.DoUnshift(msg)
 
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
         handled = false
-        if CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action) then
+        if CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, action) then
             handled = true
             break
         end
@@ -1256,7 +1233,7 @@ end
  function CleveRoids.DoStopMacro(msg)
     local handled = false
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(CleveRoids.Trim(msg))) do
-        if CleveRoids.DoWithConditionals(msg, nil, nil, not CleveRoids.hasSuperwow, "STOPMACRO") then
+        if CleveRoids.DoWithConditionals(msg, nil, nil, "STOPMACRO") then
             handled = true -- we parsed at least one command
             break
         end
@@ -1265,11 +1242,6 @@ end
 end
 
 function CleveRoids.DoCastSequence(sequence)
-    if not CleveRoids.hasSuperwow then
-        CleveRoids.Print("|cFFFF0000/castsequence|r requires |cFF00FFFFSuperWoW|r.")
-        return
-    end
-
     if CleveRoids.currentSequence and not CleveRoids.CheckSpellCast("player") then
         CleveRoids.currentSequence = nil
     elseif CleveRoids.currentSequence then
@@ -1295,7 +1267,7 @@ function CleveRoids.DoCastSequence(sequence)
         CleveRoids.currentSequence = sequence
 
         local action = (sequence.cond or "") .. active.action
-        local result = CleveRoids.DoWithConditionals(action, nil, nil, not CleveRoids.hasSuperwow, CastSpellByName)
+        local result = CleveRoids.DoWithConditionals(action, nil, nil, CastSpellByName)
 
         return result
     end
@@ -1307,7 +1279,7 @@ CleveRoids.DoConditionalCancelAura = function(msg)
     if trimmedMsg == "" then
         return false
     end
-    if CleveRoids.DoWithConditionals(trimmedMsg, nil, CleveRoids.FixEmptyTarget, false, CleveRoids.CancelAura) then
+    if CleveRoids.DoWithConditionals(trimmedMsg, nil, CleveRoids.FixEmptyTarget, CleveRoids.CancelAura) then
         return true
     else
         return false
@@ -1622,6 +1594,7 @@ CleveRoids.Frame:AddFontStrings(CleveRoids.Frame.reagentFontString, CleveRoids.F
 
 CleveRoids.Frame:SetScript("OnUpdate", CleveRoids.OnUpdate)
 CleveRoids.Frame:SetScript("OnEvent", function(...)
+    if not CleveRoids.Frame[event] then return end
     CleveRoids.Frame[event](this,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10)
 end)
 
@@ -1652,11 +1625,10 @@ CleveRoids.Frame:RegisterEvent("SPELLCAST_CHANNEL_STOP")
 
 
 function CleveRoids.Frame:PLAYER_LOGIN()
-    _, CleveRoids.playerClass = UnitClass("player")
     _, CleveRoids.playerGuid = UnitExists("player")
     CleveRoids.IndexSpells()
     CleveRoids.initializationTimer = GetTime() + 1.5
-    CleveRoids.Print("|cFF4477FFCleveR|r|cFFFFFFFFoid Macros|r |cFF00FF00Loaded|r - See the README.")
+    CleveRoids.Print("|cFF4477FFCleveR|r|cFFFFFFFFoid Macros|r |cFF00FF00Loaded|r - Requires SuperWoW client mod.")
 end
 
 function CleveRoids.Frame:ADDON_LOADED(addon)
@@ -1664,8 +1636,18 @@ function CleveRoids.Frame:ADDON_LOADED(addon)
         return
     end
 
+    if not SUPERWOW_VERSION then
+        CleveRoids.Print("|cFFFF0000ERROR: SuperWoW client mod not detected. CleveRoid Macros requires SuperWoW to function. Addon will not be loaded.|r")
+        -- Unregister all events to effectively disable the addon
+        CleveRoids.Frame:UnregisterAllEvents()
+        CleveRoids.Frame:SetScript("OnEvent", nil)
+        CleveRoids.Frame:SetScript("OnUpdate", nil)
+        return
+    end
+
     CleveRoids.InitializeExtensions()
 
+    -- SuperMacro compatibility is maintained as some users might still use it for other functionalities.
     if SuperMacroFrame then
         local hooks = {
             cast = { action = CleveRoids.DoCast },
@@ -1891,74 +1873,3 @@ end
 -- Bandaid so pfUI doesn't need to be edited
 -- pfUI/modules/thirdparty-vanilla.lua:914
 CleverMacro = true
-
----- START of pfUI Focus Fix ----
-do
-    local f = CreateFrame("Frame")
-    f:SetScript("OnEvent", function(self, event, arg1)
-        if event == "PLAYER_LOGIN" then
-            -- This ensures we wait until the player is fully in the world and all addons are loaded.
-            self:UnregisterEvent("PLAYER_LOGIN")
-
-            -- Ensure both pfUI and its focus module are loaded before attempting to hook.
-            -- This also checks that the slash command we want to modify exists.
-            if pfUI and pfUI.uf and pfUI.uf.focus and SlashCmdList.PFFOCUS then
-
-                local original_PFFOCUS_Handler = SlashCmdList.PFFOCUS
-                SlashCmdList.PFFOCUS = function(msg)
-                    -- First, execute the original /focus command from pfUI to set the unit name.
-                    original_PFFOCUS_Handler(msg)
-
-                -- Now, if a focus name was set, find the corresponding UnitID.
-                if pfUI.uf.focus.unitname then
-                    local focusName = pfUI.uf.focus.unitname
-                    local found_label, found_id = nil, nil
-
-                    -- This function iterates through all known friendly units to find a
-                    -- name match and return its specific UnitID components.
-                    local function findUnitID()
-                        -- Check party members and their pets
-                        for i = 1, GetNumPartyMembers() do
-                            if strlower(UnitName("party"..i) or "") == focusName then
-                                return "party", i
-                            end
-                            if UnitExists("partypet"..i) and strlower(UnitName("partypet"..i) or "") == focusName then
-                                return "partypet", i
-                            end
-                        end
-
-                        -- Check raid members and their pets
-                        for i = 1, GetNumRaidMembers() do
-                            if strlower(UnitName("raid"..i) or "") == focusName then
-                                return "raid", i
-                            end
-                            if UnitExists("raidpet"..i) and strlower(UnitName("raidpet"..i) or "") == focusName then
-                                return "raidpet", i
-                            end
-                        end
-
-                        -- Check player and pet
-                        if strlower(UnitName("player") or "") == focusName then return "player", nil end
-                        if UnitExists("pet") and strlower(UnitName("pet") or "") == focusName then return "pet", nil end
-
-                            return nil, nil
-                        end
-
-                        found_label, found_id = findUnitID()
-
-                        -- Store the found label and ID. CleveRoids' Core.lua will use this
-                        -- for a direct, reliable cast without needing to change your target.
-                        pfUI.uf.focus.label = found_label
-                        pfUI.uf.focus.id = found_id
-                    else
-                        -- Focus was cleared (e.g., via /clearfocus), so ensure our cached data is cleared too.
-                        pfUI.uf.focus.label = nil
-                        pfUI.uf.focus.id = nil
-                    end
-                end
-            end
-        end
-    end)
-    f:RegisterEvent("PLAYER_LOGIN")
-    end
-    ---- END of pfUI Focus Fix ----

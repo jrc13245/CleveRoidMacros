@@ -13,8 +13,7 @@ CleveRoids.mouseOverResolvers  = {}
 
 CleveRoids.mouseoverUnit = CleveRoids.mouseoverUnit or nil
 CleveRoids.mouseOverUnit = nil
-
-CleveRoids.hasSuperwow = SetAutoloot and true or false
+CleveRoids.nameplateMouseoverGUID = nil
 
 CleveRoids.ParsedMsg = {}
 CleveRoids.Items     = {}
@@ -90,19 +89,6 @@ CleveRoids.spamConditions = {
     [CleveRoids.Localized.AutoShot] = "checkchanneled",
     [CleveRoids.Localized.Shoot]    = "checkchanneled",
 }
-
-CleveRoids.auraTextures = {
-    [CleveRoids.Localized.Spells["Stealth"]]    = "Interface\\Icons\\Ability_Stealth",
-    [CleveRoids.Localized.Spells["Prowl"]]      = "Interface\\Icons\\Ability_Ambush",
-    [CleveRoids.Localized.Spells["Shadowform"]] = "Interface\\Icons\\Spell_Shadow_Shadowform",
-    ["Seal of Wisdom"] = "Interface\\Icons\\Spell_Holy_RighteousnessAura",
-    ["Seal of the Crusader"] = "Interface\\Icons\\Spell_Holy_HolySmite",
-    ["Seal of Light"] = "Interface\\Icons\\Spell_Holy_HealingAura",
-    ["Seal of the Justice"] = "Interface\\Icons\\Spell_Holy_SealOfWrath",
-    ["Seal of Righteousness"] = "Interface\\Icons\\Ability_ThunderBolt",
-    ["Seal of Command"] = "Interface\\Icons\\Ability_Warrior_InnerRage",
-}
-
 
 -- I need to make a 2h modifier
 -- Maps easy to use weapon type names (e.g. Axes, Shields) to their inventory slot name and their localized tooltip name
