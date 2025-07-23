@@ -913,61 +913,101 @@ function CleveRoids.DoCast(msg)
     return handled
 end
 
--- Attempts to target a unit based on a set of conditionals, searching for a valid unit if necessary.
+-- Attempts to target a unit based on a set of conditionals, with explicit save/restore of the original target.
 function CleveRoids.DoTarget(msg)
     local action, conditionals = CleveRoids.GetParsedMsg(msg)
 
-    -- If the command is a simple "/target Name" or has no conditionals, let the original function handle it.
     if action ~= "" or not next(conditionals) then
         CleveRoids.Hooks.TARGET_SlashCmd(msg)
         return true
     end
 
-    -- Helper function to validate a unit against the macro's conditionals.
     local function IsUnitValid(unitId, conds)
-        if not UnitExists(unitId) or UnitIsDeadOrGhost(unitId) then return false end
+        if not (unitId and UnitExists(unitId)) or UnitIsDeadOrGhost(unitId) then return false end
         conds.target = unitId
         for k, v in pairs(conds) do
             if not CleveRoids.ignoreKeywords[k] then
                 if not CleveRoids.Keywords[k] or not CleveRoids.Keywords[k](conds) then
-                    return false -- A condition failed.
+                    return false
                 end
             end
         end
-        return true -- All conditions passed.
+        return true
     end
 
-    -- RULE 4: If current target is already valid, do nothing.
+    -- If your current target is already valid, do nothing.
     if IsUnitValid("target", conditionals) then
         return true
     end
 
-    -- If we're here, the current target is invalid or missing. We need to search for a new one.
-    -- We'll revert to the last target if our search fails.
-    TargetLastTarget() -- Store current target in the "last target" buffer.
+    -- ====================================================================
+    --  SUPERWOW LOGIC (ADVANCED GUID SAVE/RESTORE)
+    -- =================================E===================================
+    if CleveRoids.hasSuperwow then
+        -- --- EXPLICIT SAVE (SuperWoW method) ---
+        -- Save the unique GUID of our original target using the enhanced UnitExists function.
+        local _, originalTargetGUID = UnitExists("target")
 
-    -- Search Strategy:
-    -- 1. Search through Party and Raid frames first.
-    for i = 1, 40 do
-        local unit = (i <= 4) and "party"..i or "raid"..i
-        if IsUnitValid(unit, conditionals) then
-            if UnitIsVisible(unit) then
+        -- 1. Search party and raid frames first.
+        for i = 1, 40 do
+            local unit = (i <= 4) and "party"..i or "raid"..i
+            if IsUnitValid(unit, conditionals) and UnitIsVisible(unit) then
                 TargetUnit(unit)
-                return true -- Found a valid target in the group.
+                return true
             end
+        end
+
+        -- 2. If no group member was valid, check the nearest world enemy.
+        TargetNearestEnemy()
+        if IsUnitValid("target", conditionals) then
+            return true
+        end
+
+        -- --- EXPLICIT RESTORE (SuperWoW method) ---
+        -- 3. If the search failed, restore the original target.
+        if originalTargetGUID then
+            -- Try to find the original target in the party/raid by its GUID.
+            for i = 1, 40 do
+                local unit = (i <= 4) and "party"..i or "raid"..i
+                local _, guid = UnitExists(unit)
+                if guid and guid == originalTargetGUID then
+                    TargetUnit(unit)
+                    return true
+                end
+            end
+
+            -- If not found in group, it was a world unit. Fall back to TargetLastTarget().
+            TargetLastTarget()
+        else
+            -- We had no original target and found no new one, so clear the target.
+            ClearTarget()
+        end
+
+    -- ====================================================================
+    --  STANDARD LOGIC (NO SUPERWOW)
+    -- ====================================================================
+    else
+        -- This is the safe fallback logic that does not rely on GUIDs.
+
+        -- 1. Search party and raid frames.
+        for i = 1, 40 do
+            local unit = (i <= 4) and "party"..i or "raid"..i
+            if IsUnitValid(unit, conditionals) and UnitIsVisible(unit) then
+                TargetUnit(unit)
+                return true
+            end
+        end
+
+        -- 2. Check the nearest world enemy.
+        TargetNearestEnemy()
+        if IsUnitValid("target", conditionals) then
+            return true
+        else
+            -- Revert the TargetNearestEnemy call, restoring your original target.
+            TargetLastTarget()
         end
     end
 
-    -- 2. If no group member matched, check the nearest world enemy.
-    --    This is the only reliable way to find a non-group enemy via the API.
-    TargetNearestEnemy()
-    if IsUnitValid("target", conditionals) then
-         -- The nearest enemy is a valid target, so we keep it.
-        return true -- RULE 1: Target a world unit only if it's valid.
-    end
-
-    -- RULE 2 & 3: If the search found no valid units at all, revert to our original target.
-    TargetLastTarget()
     return true
 end
 
