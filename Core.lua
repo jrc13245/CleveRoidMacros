@@ -913,9 +913,7 @@ function CleveRoids.DoCast(msg)
     return handled
 end
 
--- In Core.lua
-
--- Final production version of DoTarget using GUIDs and the correct :Click() method for targeting.
+-- Target using GUIDs and the correct :Click() method for targeting.
 function CleveRoids.DoTarget(msg)
     local action, conditionals = CleveRoids.GetParsedMsg(msg)
 
