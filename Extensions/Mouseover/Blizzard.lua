@@ -1,12 +1,10 @@
 --[[
 	Author: Fondlez
-
-    This extension adds improved support for mouseover macros in Roid-Macros
-    for the default Blizzard frames.
+	This extension has been updated to use SuperWoW's native SetMouseoverUnit()
+    for robust mouseover support on default Blizzard frames.
 ]]
 local _G = _G or getfenv(0)
 local CleveRoids = _G.CleveRoids or {}
-CleveRoids.mouseoverUnit = CleveRoids.mouseoverUnit or nil
 
 local Extension = CleveRoids.RegisterExtension("Blizzard")
 
@@ -17,17 +15,15 @@ function Extension.RegisterMouseoverForFrame(frame, unit)
     local onleave = frame:GetScript("OnLeave")
 
     frame:SetScript("OnEnter", function()
-        CleveRoids.mouseoverUnit = unit
-        if onenter then
-            onenter()
-        end
+        -- Use SuperWoW's function to set the game's mouseover unit
+        if SetMouseoverUnit then SetMouseoverUnit(unit) end
+        if onenter then onenter() end
     end)
 
     frame:SetScript("OnLeave", function()
-        CleveRoids.mouseoverUnit = nil
-        if onleave then
-            onleave()
-        end
+        -- Use SuperWoW's function to clear the game's mouseover unit
+        if SetMouseoverUnit then SetMouseoverUnit() end
+        if onleave then onleave() end
     end)
 end
 
@@ -40,10 +36,10 @@ do
         ["PartyMemberFrame2"] = "party2",
         ["PartyMemberFrame3"] = "party3",
         ["PartyMemberFrame4"] = "party4",
-        ["PartyMemberFrame1PetFrame"] = "party1",
-        ["PartyMemberFrame2PetFrame"] = "party2",
-        ["PartyMemberFrame3PetFrame"] = "party3",
-        ["PartyMemberFrame4PetFrame"] = "party4",
+        ["PartyMemberFrame1PetFrame"] = "party1pet", -- Corrected unit
+        ["PartyMemberFrame2PetFrame"] = "party2pet", -- Corrected unit
+        ["PartyMemberFrame3PetFrame"] = "party3pet", -- Corrected unit
+        ["PartyMemberFrame4PetFrame"] = "party4pet", -- Corrected unit
     }
 
     local bars = {
