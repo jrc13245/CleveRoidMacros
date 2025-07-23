@@ -913,7 +913,7 @@ function CleveRoids.DoCast(msg)
     return handled
 end
 
--- Attempts to target a unit based on a set of conditionals, with explicit save/restore of the original target.
+-- Targets a unit based on conditionals using a non-destructive search, ensuring the original target is never changed unless a valid new target is found.
 function CleveRoids.DoTarget(msg)
     local action, conditionals = CleveRoids.GetParsedMsg(msg)
 
@@ -922,8 +922,11 @@ function CleveRoids.DoTarget(msg)
         return true
     end
 
+    -- Helper function to validate a unit against the macro's conditionals.
     local function IsUnitValid(unitId, conds)
-        if not (unitId and UnitExists(unitId)) or UnitIsDeadOrGhost(unitId) then return false end
+        if not unitId or not UnitExists(unitId) or UnitIsDeadOrGhost(unitId) then
+            return false
+        end
         conds.target = unitId
         for k, v in pairs(conds) do
             if not CleveRoids.ignoreKeywords[k] then
@@ -935,79 +938,44 @@ function CleveRoids.DoTarget(msg)
         return true
     end
 
-    -- If your current target is already valid, do nothing.
+    -- === STEP 1: VALIDATE CURRENT TARGET ===
+    -- If your current target already meets the conditions, there is nothing to do.
     if IsUnitValid("target", conditionals) then
         return true
     end
 
-    -- ====================================================================
-    --  SUPERWOW LOGIC (ADVANCED GUID SAVE/RESTORE)
-    -- =================================E===================================
-    if CleveRoids.hasSuperwow then
-        -- --- EXPLICIT SAVE (SuperWoW method) ---
-        -- Save the unique GUID of our original target using the enhanced UnitExists function.
-        local _, originalTargetGUID = UnitExists("target")
-
-        -- 1. Search party and raid frames first.
-        for i = 1, 40 do
-            local unit = (i <= 4) and "party"..i or "raid"..i
-            if IsUnitValid(unit, conditionals) and UnitIsVisible(unit) then
-                TargetUnit(unit)
-                return true
-            end
-        end
-
-        -- 2. If no group member was valid, check the nearest world enemy.
-        TargetNearestEnemy()
-        if IsUnitValid("target", conditionals) then
-            return true
-        end
-
-        -- --- EXPLICIT RESTORE (SuperWoW method) ---
-        -- 3. If the search failed, restore the original target.
-        if originalTargetGUID then
-            -- Try to find the original target in the party/raid by its GUID.
-            for i = 1, 40 do
-                local unit = (i <= 4) and "party"..i or "raid"..i
-                local _, guid = UnitExists(unit)
-                if guid and guid == originalTargetGUID then
-                    TargetUnit(unit)
-                    return true
-                end
-            end
-
-            -- If not found in group, it was a world unit. Fall back to TargetLastTarget().
-            TargetLastTarget()
-        else
-            -- We had no original target and found no new one, so clear the target.
-            ClearTarget()
-        end
-
-    -- ====================================================================
-    --  STANDARD LOGIC (NO SUPERWOW)
-    -- ====================================================================
-    else
-        -- This is the safe fallback logic that does not rely on GUIDs.
-
-        -- 1. Search party and raid frames.
-        for i = 1, 40 do
-            local unit = (i <= 4) and "party"..i or "raid"..i
-            if IsUnitValid(unit, conditionals) and UnitIsVisible(unit) then
-                TargetUnit(unit)
-                return true
-            end
-        end
-
-        -- 2. Check the nearest world enemy.
-        TargetNearestEnemy()
-        if IsUnitValid("target", conditionals) then
-            return true
-        else
-            -- Revert the TargetNearestEnemy call, restoring your original target.
-            TargetLastTarget()
+    -- === STEP 2: BUILD A LIST OF CANDIDATE TARGETS (Non-Destructive) ===
+    local candidates = {}
+    -- Add party and raid members to the list.
+    for i = 1, 40 do
+        local unit = (i <= 4) and "party"..i or "raid"..i
+        if UnitExists(unit) then
+            table.insert(candidates, unit)
         end
     end
 
+    -- Add units from visible nameplates to the list.
+    if WorldFrame and WorldFrame.nameplates then
+        for _, frame in pairs(WorldFrame.nameplates) do
+            if frame and frame.unit and UnitExists(frame.unit) then
+                table.insert(candidates, frame.unit)
+            end
+        end
+    end
+
+    -- === STEP 3: TEST THE CANDIDATES AND FIND THE FIRST VALID ONE (Non-Destructive) ===
+    for _, unitId in ipairs(candidates) do
+        if IsUnitValid(unitId, conditionals) then
+            -- We found a valid new target.
+            -- This is the ONLY place where a targeting action occurs.
+            TargetUnit(unitId)
+            return true
+        end
+    end
+
+    -- === STEP 4: HANDLE FAILURE ===
+    -- If the loop completes, no valid new target was found in the entire list.
+    -- We do absolutely nothing, leaving your original target untouched.
     return true
 end
 
