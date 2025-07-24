@@ -40,10 +40,10 @@ do
         ["PartyMemberFrame2"] = "party2",
         ["PartyMemberFrame3"] = "party3",
         ["PartyMemberFrame4"] = "party4",
-        ["PartyMemberFrame1PetFrame"] = "party1pet",
-        ["PartyMemberFrame2PetFrame"] = "party2pet",
-        ["PartyMemberFrame3PetFrame"] = "party3pet",
-        ["PartyMemberFrame4PetFrame"] = "party4pet",
+        ["PartyMemberFrame1PetFrame"] = "party1",
+        ["PartyMemberFrame2PetFrame"] = "party2",
+        ["PartyMemberFrame3PetFrame"] = "party3",
+        ["PartyMemberFrame4PetFrame"] = "party4",
     }
 
     local bars = {

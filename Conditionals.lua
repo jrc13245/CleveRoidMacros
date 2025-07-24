@@ -7,7 +7,7 @@ local CleveRoids = _G.CleveRoids or {}
 
 --This table maps stat keys to the functions that retrieve their values.
 local stat_checks = {
-    -- Base Stats (with gear)
+    -- Base Stats (Corrected to use the 'effective' stat with gear)
     str = function() local _, effective = UnitStat("player", 1); return effective end,
     strength = function() local _, effective = UnitStat("player", 1); return effective end,
     agi = function() local _, effective = UnitStat("player", 2); return effective end,
@@ -19,7 +19,7 @@ local stat_checks = {
     spi = function() local _, effective = UnitStat("player", 5); return effective end,
     spirit = function() local _, effective = UnitStat("player", 5); return effective end,
 
-    -- Combat Ratings (Using UnitAttackPower and UnitRangedAttackPower)
+    -- Combat Ratings (Corrected to use UnitAttackPower and UnitRangedAttackPower)
     ap = function() local base, pos, neg = UnitAttackPower("player"); return base + pos + neg end,
     attackpower = function() local base, pos, neg = UnitAttackPower("player"); return base + pos + neg end,
     rap = function() local base, pos, neg = UnitRangedAttackPower("player"); return base + pos + neg end,
@@ -100,6 +100,9 @@ function CleveRoids.IsValidTarget(target, help)
         return true
     end
 
+    -- --- START OF PATCH ---
+    -- New logic to handle [@mouseover] with pfUI compatibility.
+
     local effectiveMouseoverUnit = "mouseover" -- Start with the default game token.
 
     -- Check if the default mouseover exists. If not, check pfUI's internal data,
@@ -113,7 +116,9 @@ function CleveRoids.IsValidTarget(target, help)
             return false
         end
     end
+    -- --- END OF PATCH ---
 
+    -- Finally, perform the help/harm check on the determined mouseover unit (either from the game or from pfUI).
     if not UnitExists(effectiveMouseoverUnit) or not CleveRoids.CheckHelp(effectiveMouseoverUnit, help) then
         return false
     end
@@ -177,6 +182,7 @@ function CleveRoids.HasWeaponEquipped(weaponType)
     local slotId = GetInventorySlotInfo(slotName)
     local slotLink = GetInventoryItemLink("player",slotId)
 
+    -- ADD THIS CHECK:
     if not slotLink then
         return false
     end
@@ -222,6 +228,7 @@ end
 function CleveRoids.CheckChanneled(channeledSpell)
     if not channeledSpell then return false end
 
+    -- Remove the "(Rank X)" part from the spells name in order to allow downranking
     local spellName = string.gsub(CleveRoids.CurrentSpell.spellName, "%(.-%)%s*", "")
     local channeled = string.gsub(channeledSpell, "%(.-%)%s*", "")
 

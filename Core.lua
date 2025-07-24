@@ -330,7 +330,7 @@ end
 
 -- Returns the name of the focus target or nil
 function CleveRoids.GetFocusName()
-    -- Add specific compatibility for pfUI.
+    -- 1. Add specific compatibility for pfUI.
     -- pfUI stores its focus unit information in a table.
     if pfUI and pfUI.uf and pfUI.uf.focus and pfUI.uf.focus.unitname then
         return pfUI.uf.focus.unitname
@@ -629,6 +629,7 @@ function CleveRoids.ParseMsg(msg)
                         arg_for_find = string.gsub(arg_for_find, "^#(%d+)$", "=#%1")
                         arg_for_find = string.gsub(arg_for_find, "([^>~=<]+)#(%d+)", "%1=#%2")
 
+                        -- FIXED: This regex now accepts decimal numbers
                         local _, _, name, operator, amount = string.find(arg_for_find, "([^>~=<]*)([>~=<]+)(#?%d*%.?%d+)")
                         if not operator or not amount then
                             table.insert(conditionals[condition], processed_arg)
@@ -728,6 +729,8 @@ function CleveRoids.TestAction(cmd, args)
             if not CleveRoids.GetFocusName() then
                 return -- No focus exists, so this action is not valid.
             end
+            -- Fallback for testing: We can't safely target by name here, so we default to "target".
+            -- This part of the original logic remains as a fallback, but the pfUI check above will handle most cases.
             conditionals.target = "target"
         end
     end
@@ -1108,6 +1111,7 @@ function CleveRoids.DoUse(msg)
 
         if (MerchantFrame:IsVisible() and MerchantFrame.selectedTab == 1) then return end
     end
+    -- END of replacement block
 
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
         v = string.gsub(v, "^%?", "")
@@ -1128,10 +1132,12 @@ function CleveRoids.DoUse(msg)
             break
         end
     end
-    return handled
+    return handled -- Corrected typo from 'Handled' to 'handled'
 end
 
 function CleveRoids.EquipBagItem(msg, offhand)
+    -- START of NEW and IMPROVED FIX
+
     -- First, get item data from the addon's own reliable cache.
     local item = CleveRoids.GetItem(msg)
     if not item or not item.name then
@@ -1150,6 +1156,8 @@ function CleveRoids.EquipBagItem(msg, offhand)
             return true
         end
     end
+    -- END of NEW and IMPROVED FIX
+
 
     -- If the check above fails, proceed with the original logic to equip the item.
     -- We can reuse the 'item' object we already found.
@@ -1371,6 +1379,7 @@ function GameTooltip.SetAction(self, slot)
     if action_to_display_info and action_to_display_info.action then
         local action_name = action_to_display_info.action
 
+        -- NEW: Check if action is a slot ID for tooltip
         local slotId = tonumber(action_name)
         if slotId and slotId >= 1 and slotId <= 19 then
             -- Use the more specific SetInventoryItem function to prevent conflicts with other addons.
@@ -1378,6 +1387,7 @@ function GameTooltip.SetAction(self, slot)
             GameTooltip:Show()
             return
         end
+        -- End new logic
 
         local current_spell_data = CleveRoids.GetSpell(action_name)
         if current_spell_data then
@@ -1646,16 +1656,13 @@ function CleveRoids.Frame:PLAYER_LOGIN()
     _, CleveRoids.playerGuid = UnitExists("player")
     CleveRoids.IndexSpells()
     CleveRoids.initializationTimer = GetTime() + 1.5
-    CleveRoids.Print("|cFF4477FFCleveR|r|cFFFFFFFFoid Macros|r |cFF00FF00Loaded|r - Requires SuperWoW to be fully functional. See the README.")
+    CleveRoids.Print("|cFF4477FFCleveR|r|cFFFFFFFFoid Macros|r |cFF00FF00Loaded|r - See the README.")
 end
 
 function CleveRoids.Frame:ADDON_LOADED(addon)
     if addon ~= "CleveRoidMacros" then
         return
     end
-
-    if not SUPERWOW_VERSION then
-        CleveRoids.Print("|cFFFF0000ERROR: SuperWoW client mod not detected. CleveRoid Macros requires SuperWoW for full functionality. Addon will be loaded but not fully functional.|r")
 
     CleveRoids.InitializeExtensions()
 
@@ -1885,6 +1892,7 @@ end
 -- pfUI/modules/thirdparty-vanilla.lua:914
 CleverMacro = true
 
+---- START of pfUI Focus Fix ----
 do
     local f = CreateFrame("Frame")
     f:SetScript("OnEvent", function(self, event, arg1)
@@ -1953,3 +1961,4 @@ do
     end)
     f:RegisterEvent("PLAYER_LOGIN")
     end
+    ---- END of pfUI Focus Fix ----
