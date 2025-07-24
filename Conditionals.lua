@@ -7,7 +7,7 @@ local CleveRoids = _G.CleveRoids or {}
 
 --This table maps stat keys to the functions that retrieve their values.
 local stat_checks = {
-    -- Base Stats (Corrected to use the 'effective' stat with gear)
+    -- Base Stats (with gear)
     str = function() local _, effective = UnitStat("player", 1); return effective end,
     strength = function() local _, effective = UnitStat("player", 1); return effective end,
     agi = function() local _, effective = UnitStat("player", 2); return effective end,
@@ -19,7 +19,7 @@ local stat_checks = {
     spi = function() local _, effective = UnitStat("player", 5); return effective end,
     spirit = function() local _, effective = UnitStat("player", 5); return effective end,
 
-    -- Combat Ratings (Corrected to use UnitAttackPower and UnitRangedAttackPower)
+    -- Combat Ratings (Using UnitAttackPower and UnitRangedAttackPower)
     ap = function() local base, pos, neg = UnitAttackPower("player"); return base + pos + neg end,
     attackpower = function() local base, pos, neg = UnitAttackPower("player"); return base + pos + neg end,
     rap = function() local base, pos, neg = UnitRangedAttackPower("player"); return base + pos + neg end,
@@ -92,6 +92,7 @@ end
 -- help: Optional. If set to 1 then the target must be friendly. If set to 0 it must be an enemy
 -- returns: Whether or not the target is a viable target
 function CleveRoids.IsValidTarget(target, help)
+    -- If the conditional is not for @mouseover, use the existing logic.
     if target ~= "mouseover" then
         if not UnitExists(target) or not CleveRoids.CheckHelp(target, help) then
             return false
@@ -99,24 +100,25 @@ function CleveRoids.IsValidTarget(target, help)
         return true
     end
 
-    -- NEW MOUSEOVER LOGIC (WITH NAMEPLATE FALLBACK)
-    local effectiveMouseoverUnit = nil
+    local effectiveMouseoverUnit = "mouseover" -- Start with the default game token.
 
-    -- 1. Primary Check: Use the standard "mouseover" unit if it exists.
-    if UnitExists("mouseover") then
-        effectiveMouseoverUnit = "mouseover"
-    -- 2. Fallback Check: If no standard mouseover, check our custom nameplate GUID.
-    elseif CleveRoids.nameplateMouseoverGUID and UnitExists(CleveRoids.nameplateMouseoverGUID) then
-        effectiveMouseoverUnit = CleveRoids.nameplateMouseoverGUID
+    -- Check if the default mouseover exists. If not, check pfUI's internal data,
+    -- which is necessary because pfUI frames don't always update the default token.
+    if not UnitExists(effectiveMouseoverUnit) then
+        if pfUI and pfUI.uf and pfUI.uf.mouseover and pfUI.uf.mouseover.unit and UnitExists(pfUI.uf.mouseover.unit) then
+            -- If pfUI has a valid mouseover unit recorded, use that instead.
+            effectiveMouseoverUnit = pfUI.uf.mouseover.unit
+        else
+            -- If neither the default token nor the pfUI unit exists, there's no valid mouseover.
+            return false
+        end
     end
 
-    -- If we found a valid unit by either method, perform the final check.
-    if effectiveMouseoverUnit and CleveRoids.CheckHelp(effectiveMouseoverUnit, help) then
-        return true
+    if not UnitExists(effectiveMouseoverUnit) or not CleveRoids.CheckHelp(effectiveMouseoverUnit, help) then
+        return false
     end
 
-    -- If no valid mouseover unit was found by any method.
-    return false
+    return true
 end
 
 -- Returns the current shapeshift / stance index
@@ -175,7 +177,6 @@ function CleveRoids.HasWeaponEquipped(weaponType)
     local slotId = GetInventorySlotInfo(slotName)
     local slotLink = GetInventoryItemLink("player",slotId)
 
-    -- ADD THIS CHECK:
     if not slotLink then
         return false
     end
@@ -221,7 +222,6 @@ end
 function CleveRoids.CheckChanneled(channeledSpell)
     if not channeledSpell then return false end
 
-    -- Remove the "(Rank X)" part from the spells name in order to allow downranking
     local spellName = string.gsub(CleveRoids.CurrentSpell.spellName, "%(.-%)%s*", "")
     local channeled = string.gsub(channeledSpell, "%(.-%)%s*", "")
 
@@ -466,7 +466,7 @@ function CleveRoids.GetPlayerAura(index, isbuff)
     local bid = GetPlayerBuff(index, buffType)
     if bid < 0 then return end
 
-    local spellID = GetPlayerBuffID(bid)
+    local spellID = CleveRoids.hasSuperwow and GetPlayerBuffID(bid)
 
     return GetPlayerBuffTexture(bid), GetPlayerBuffApplications(bid), spellID, GetPlayerBuffTimeLeft(bid)
 end
@@ -494,8 +494,10 @@ function CleveRoids.ValidateAura(unit, args, isbuff)
             end
         end
 
-        if not spellID or not texture then break end
-        if args.name == SpellInfo(spellID) then
+        if (CleveRoids.hasSuperwow and not spellID) or not texture then break end
+        if (CleveRoids.hasSuperwow and args.name == SpellInfo(spellID))
+            or (not CleveRoids.hasSuperwow and texture == CleveRoids.auraTextures[args.name])
+        then
             found = true
             break
         end
@@ -539,8 +541,8 @@ function CleveRoids.ValidateUnitDebuff(unit, args)
             texture, stacks, _, spellID = UnitDebuff(unit, i)
         end
 
-        if not texture or not spellID then break end
-        if args.name == SpellInfo(spellID) then
+        if not texture then break end
+        if (CleveRoids.hasSuperwow and args.name == SpellInfo(spellID)) or (not CleveRoids.hasSuperwow and texture == CleveRoids.auraTextures[args.name]) then
             found = true
             break
         end
@@ -557,8 +559,8 @@ function CleveRoids.ValidateUnitDebuff(unit, args)
                 texture, stacks, spellID = UnitBuff(unit, i)
             end
 
-            if not texture or not spellID then break end
-            if args.name == SpellInfo(spellID) then
+            if not texture then break end
+            if (CleveRoids.hasSuperwow and args.name == SpellInfo(spellID)) or (not CleveRoids.hasSuperwow and texture == CleveRoids.auraTextures[args.name]) then
                 found = true
                 break
             end
@@ -696,6 +698,8 @@ function CleveRoids.IsReactiveUsable(spellName)
 end
 
 function CleveRoids.CheckSpellCast(unit, spell)
+    if not CleveRoids.hasSuperwow then return false end
+
     local spell = spell or ""
     local _,guid = UnitExists(unit)
     if not guid or (guid and not CleveRoids.spell_tracking[guid]) then
