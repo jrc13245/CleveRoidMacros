@@ -3,8 +3,6 @@ This was originally an effort to bring the dynamic tooltip and cast sequence fun
 
 Both [SuperWoW](https://github.com/balakethelock/SuperWoW) and [Nampower](https://github.com/pepopo978/nampower) are REQUIRED for full functionality.
 
-Check slash command and all conditional lists for new usages! 
-
 ---
 
 ## Installation
@@ -23,7 +21,6 @@ Check slash command and all conditional lists for new usages!
 --- 
 
 ## Known Issues
-* To reduce memory usage, conditionals check updates for icons are event based. This means icons using some conditionals that arent triggered by events are slow to change. example: @unitid mod etc.
 * ALL macros must be given unique names, no blank names or muliple of the same name or using spell names. 
 * If Any of your macros have syntax errors, it will affect all macros when it comes to errors.
 * Spells with parenthesis ie: Faerie Fire (Feral) or Barkskin (Feral) MUST be written using ranks, becomming `Faerie Fire (Feral)(Rank X)`
@@ -37,10 +34,7 @@ Check slash command and all conditional lists for new usages!
 
 ## Commands and Conditionals
 ### ***Important! Spells, Items, conditionals, etc are case sensitive.  Barring a bug, if there is an issue, it's almost always because something is typed incorrectly.***  
-* New Conditional class/noclass.
-* Conditional exists is now noable.
-* Added alive/dead alias' nodead/noalive.
-* Conditional combat can now take unitids.
+
 * Renamed `attacking`/`noattacking` contitionals to `targeting`/`notargeting` for better clarity of what they do.
 * All conditionals that should have an implied target of @target now do
 * Conditionals can be separated by comma or space
@@ -266,6 +260,7 @@ Check slash command and all conditional lists for new usages!
 |----------------|---------------|  :-:  | :-:    |-----------|
 | cdgcd          | [cdgcd]<br/>[cdgcd:"Name"]<br/>[cdgcd:"Name">X] | * | * | If the Spell or Item is on cooldown and optionally if the amount of time left is >= or <= than X seconds.  **GCD NOT IGNORED** |
 | channeled      | [channeled] |  |  | If the player is currently channeling a spell. |
+| combat         | [combat] |  | * | If the player is in combat. |
 | combo          | [combo:>#3]<br/>[combo:#2]</br>[combo:<#5] |   |  * |  If the player has the specified number of combo points. |
 | cooldown       | [cooldown]<br/>[cooldown:"Name"]<br/>[cooldown:"Name"<X] | * | * | If the Spell or Item name is on cooldown and optionally if the amount of time left is >= or <= than X seconds. **GCD (if exatly 1.5 sec) IGNORED** |
 | equipped       | [equipped:"Name"]<br/>[equipped:Shields]<br/>[equipped:Daggers2] | * | * | If the player has an item name/id or item type equipped.  See [below](#weapon-types) for a list of valid Weapon Types. |
@@ -290,22 +285,20 @@ Check slash command and all conditional lists for new usages!
 
 ### Unit Based
 ### The default @unitid is usually @target if you don't specify one
-### The only conditionals that take conditional:unitid are combat/nocombat and targeting/notargeting
 | Conditional    | Syntax        | Multi | Noable | Tests For |
 |----------------|---------------|  :-:  | :-:    |-----------|
-| alive          | [alive]       |       |    *    | If the @unitid is NOT dead or a ghost. |
+| alive          | [alive]       |       |        | If the @unitid is NOT dead or a ghost. |
 | buff           | [buff]<br/>[buff:"Name"]<br/>[buff:"Name">#X]<br/>[buff:"Name"<X] |  | * | If the @unitid has a buff of the given name and optionally if it has >= or <= than X number of stacks. |
 | casting        | [casting]<br/>[casting:"Spell Name"] | * |  * |  If the @unitid is casting any or one or more specific spells. |
-| combat         | [combat]<br/>[combat:target] |  | * | If the unitid (default is player) is in combat. |
-| dead           | [dead]        |       |    *    | If the @unitid is dead or a ghost. |
+| dead           | [dead]        |       |        | If the @unitid is dead or a ghost. |
 | debuff         | [debuff]<br/>[debuff:"Name"]<br/>[debuff:"Name">#X]<br/>[debuff:<X] |  | * | If the @unitid has a debuff of the given name and optionally if it has >= or <= than X number of stacks. |
 | harm           | [harm]        |       |        | If the @unitid is an enemy. |
 | help           | [help]        |       |        | If the @unitid is friendly. |
 | hp             | [hp:>=X]<br/>[hp:>=X/<=Y] |  |  | The @unitid health **PERCENT** compared to X. |
 | hplost         | [hplost:>=X]<br/>[hplost:>=X/<=Y] |  |  | The @unitid health lost compared to X. |
 | inrange        | [inrange]<br/>[inrange:"Name"] | * | * | If the specified @unitid is in range of the spell. |
-| isnpc          | [isnpc] | * |  | If the @unitid is an npc.<br/>See this [article](https://wowpedia.fandom.com/wiki/UnitId) for a list of unitids.<br/>Not all units are valid in vanilla. |
-| isplayer       | [isplayer] | * |  | If the @unitid is a player.<br/>See this [article](https://wowpedia.fandom.com/wiki/UnitId) for a list of unitids.<br/>Not all units are valid in vanilla. |
+| isnpc          | [isnpc:unitid] | * |  | If the unitid is an npc.<br/>See this [article](https://wowpedia.fandom.com/wiki/UnitId) for a list of unitids.<br/>Not all units are valid in vanilla. |
+| isplayer       | [isplayer:unitid] | * |  | If the unitid is a player.<br/>See this [article](https://wowpedia.fandom.com/wiki/UnitId) for a list of unitids.<br/>Not all units are valid in vanilla. |
 | member         | [member]      |       |    *   | If the @unitid is in your party OR raid. |
 | party          | [party]       |       |    *   | If the @unitid is in your party. |
 | power          | [power:>=X]<br/>[power:>=X/<=Y] |  |  | The @unitid power (mana/rage/energy) **PERCENT** compared to X. |
@@ -315,9 +308,8 @@ Check slash command and all conditional lists for new usages!
 | rawpower       | [rawpower:>=X]<br/>[rawpower:>=X/<=Y] |  |  | The @unitid power (mana/rage/energy) compared to X. |
 | type           | [type:"Creature Type"] | * | * | If the @unitid is the specified creature type.  See [below](#creature-types) for a list of valid Creature Types. |
 | targeting      | [targeting:unitid] | * | * | If the @unitid is targeting the specified unitid.<br/>See this [article](https://wowpedia.fandom.com/wiki/UnitId) for a list of unitids.<br/>Not all units are valid in vanilla. |
-| exists         | [exists] |  | * | If the @unitid exists. |
+| exists         | [exists] |  |  | If the @unitid exists. |
 | @unitid        | [@mouseover] |  |  | The @unitid is a valid target. |
-| class          | [class:classname1/classname2]<br/>[class:Warrior/Priest] | * | * | The target is a player of the specified class/classes. |
 
 ### Unitids
 | Name (N=party/raid slot number) |
@@ -337,19 +329,6 @@ Check slash command and all conditional lists for new usages!
 | raidNtarget |
 | targettargettarget |
 | focus (requires pfui or another addon) |
-
-### Classes
-| Class |
-|------|
-| Warrior |
-| Paladin |
-| Hunter |
-| Shaman |
-| Druid |
-| Rogue |
-| Mage |
-| Warlock |
-| Priest |
 
 ### Weapon Types
 | Name | Slot |
