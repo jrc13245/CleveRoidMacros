@@ -910,74 +910,81 @@ function CleveRoids.DoCast(msg)
     return handled
 end
 
--- Attempts to target a unit by its name using a set of conditionals
--- msg: The raw message intercepted from a /target command
--- This is the final, corrected function for /target
-
+-- Target using GUIDs and the correct :Click() method for targeting.
 function CleveRoids.DoTarget(msg)
     local action, conditionals = CleveRoids.GetParsedMsg(msg)
 
-    -- This is a small helper function to loop through and validate all conditionals.
-    local function AreConditionsMet(conds)
-        if not next(conds) then return true end -- No conditionals means they are met.
+    if action ~= "" or not next(conditionals) then
+        CleveRoids.Hooks.TARGET_SlashCmd(msg)
+        return true
+    end
+
+    -- Helper function validates a unit via its GUID.
+    local function IsGuidValid(guid, conds)
+        if not guid or not UnitExists(guid) or UnitIsDeadOrGhost(guid) then
+            return false
+        end
+        local originalCondTarget = conds.target
+        conds.target = guid
+        local allConditionsMet = true
         for k, v in pairs(conds) do
             if not CleveRoids.ignoreKeywords[k] then
                 if not CleveRoids.Keywords[k] or not CleveRoids.Keywords[k](conds) then
-                    return false -- A condition failed.
+                    allConditionsMet = false
+                    break
                 end
             end
         end
-        return true -- All conditions passed.
+        conds.target = originalCondTarget
+        return allConditionsMet
     end
 
-
-    -- Case 1: Command has conditionals but NO target name (e.g., /target [harm]).
-    -- Goal: If current target is invalid, target nearest appropriate unit.
-    if action == "" and next(conditionals) ~= nil then
-        local targetIsValid = false
-        if UnitExists("target") then
-            conditionals.target = "target"
-            if AreConditionsMet(conditionals) then
-                targetIsValid = true
-            end
-        end
-
-        -- If we don't have a valid target, find a new one.
-        if not targetIsValid then
-            if conditionals.help then
-                TargetNearestFriend()
-            else -- Default to targeting an enemy if [help] is not specified.
-                TargetNearestEnemy()
-            end
-        end
-        return true -- Command is handled.
+    -- 1. If your current target is already valid, do nothing.
+    local _, originalTargetGUID = UnitExists("target")
+    if originalTargetGUID and IsGuidValid(originalTargetGUID, conditionals) then
+        return true
     end
 
+    -- 2. Build a list of candidates to check.
+    --    This table will store the GUID and the object needed to target it.
+    local candidates = {}
+    local children = { WorldFrame:GetChildren() }
 
-    -- Case 2: Command has a target name (e.g., /target [harm] Name).
-    -- Goal: Target the named unit, and if it's invalid, revert to the last target.
-    if action ~= "" and next(conditionals) ~= nil then
-        -- The only way to check a named unit is to target it first.
-        TargetByName(action)
-
-        -- After trying to target, check if the new target is valid.
-        if UnitExists("target") then
-            conditionals.target = "target"
-            if not AreConditionsMet(conditionals) then
-                -- The new target does not meet the conditions, so revert.
-                TargetLastTarget()
-            end
-        else
-            -- TargetByName failed to find anyone, so revert to clear the target
-            -- or restore the previous one if we had one.
-            TargetLastTarget()
+    -- Add party and raid members.
+    for i = 1, 40 do
+        local unit = (i <= 4) and "party"..i or "raid"..i
+        local _, guid = UnitExists(unit)
+        if guid then
+            table.insert(candidates, { guid = guid, unitId = unit })
         end
-        return true -- Command is handled.
     end
 
+    -- Add nameplate units.
+    for _, frame in ipairs(children) do
+        if frame and frame.GetName and frame.Click then -- Ensure it's a clickable nameplate
+            local guid = frame:GetName(1)
+            if guid then
+                table.insert(candidates, { guid = guid, frame = frame })
+            end
+        end
+    end
 
-    -- Fallback for all simple, non-conditional commands (e.g., /target player).
-    CleveRoids.Hooks.TARGET_SlashCmd(msg)
+    -- 3. Find the first valid candidate and target it.
+    for _, candidate in ipairs(candidates) do
+        if IsGuidValid(candidate.guid, conditionals) then
+            -- Found a winner. Target it using the appropriate method.
+            if candidate.unitId then
+                -- It's a party/raid member, target by its unit token.
+                TargetUnit(candidate.unitId)
+            elseif candidate.frame then
+                -- It's a world mob, target by simulating a click on its nameplate frame.
+                candidate.frame:Click()
+            end
+            return true
+        end
+    end
+
+    -- 4. If no valid new target was found, do nothing, preserving your original target.
     return true
 end
 
@@ -1438,7 +1445,6 @@ function GameTooltip.SetAction(self, slot)
     CleveRoids.Hooks.GameTooltip.SetAction(self, slot)
 end
 
-
 CleveRoids.Hooks.PickupAction = PickupAction
 function PickupAction(slot)
     CleveRoids.ClearAction(slot)
@@ -1814,8 +1820,8 @@ function CleveRoids.Frame:BAG_UPDATE()
 
         -- Directly clear all relevant caches and force a UI refresh for all buttons.
         CleveRoids.Actions = {}
-        CleveRoids.Macros = {}
-        CleveRoids.ParsedMsg = {}
+        --CleveRoids.Macros = {}
+        --CleveRoids.ParsedMsg = {}
         CleveRoids.QueueActionUpdate()
     end
 end
