@@ -91,8 +91,13 @@ function CleveRoids.TestForActiveAction(actions)
 
             -- nampower range check
             if IsSpellInRange then
-                actions.active.inRange = IsSpellInRange(actions.active.action)
-            end
+				local unit = actions.active.conditionals and actions.active.conditionals.target or "target"
+				if unit == "focus" then
+					actions.active.inRange = IsSpellInRange(actions.active.action, pfUI.uf.focus.label .. pfUI.uf.focus.id)
+				elseif UnitExists(unit) then
+					actions.active.inRange = IsSpellInRange(actions.active.action, unit)
+				end
+			end
 
             actions.active.oom = (UnitMana("player") < actions.active.spell.cost)
 

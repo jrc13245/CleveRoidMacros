@@ -4,17 +4,22 @@
 ]]
 local _G = _G or getfenv(0)
 local CleveRoids = _G.CleveRoids or {}
-CleveRoids.mouseoverUnit = CleveRoids.mouseoverUnit or nil
 
-local Extension = CleveRoids.RegisterExtension("BlizzardPartyFrame")
+local Extension = CleveRoids.RegisterExtension("GameTooltipMouseover")
 
 function Extension.SetUnit(_, unit)
-    CleveRoids.mouseoverUnit = unit
+    -- When GameTooltip is shown for a unit, set the game's mouseover
+    if SetMouseoverUnit then
+        SetMouseoverUnit(unit)
+    end
 end
 
 
 function Extension.OnClose()
-    CleveRoids.mouseoverUnit = nil
+    -- When GameTooltip is hidden, clear the game's mouseover
+    if SetMouseoverUnit then
+        SetMouseoverUnit()
+    end
 end
 
 function Extension.OnLoad()
