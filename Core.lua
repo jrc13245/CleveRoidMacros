@@ -1621,7 +1621,15 @@ function IsConsumableAction(slot)
     return CleveRoids.Hooks.IsConsumableAction(slot)
 end
 
-
+-- Create a hidden tooltip frame to read buff names
+if not AuraScanTooltip and not CleveRoids.hasSuperwow then
+    CreateFrame("GameTooltip", "AuraScanTooltip")
+    AuraScanTooltip:SetOwner(WorldFrame, "ANCHORNONE")
+    AuraScanTooltip:AddFontStrings(
+        AuraScanTooltip:CreateFontString("$parentTextLeft1", nil, "GameTooltipText"),
+        AuraScanTooltip:CreateFontString("$parentTextRight1", nil, "GameTooltipText")
+    )
+end
 
 
 -- Dummy Frame to hook ADDON_LOADED event in order to preserve compatiblity with other AddOns like SuperMacro
