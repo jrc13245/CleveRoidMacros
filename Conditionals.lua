@@ -147,18 +147,30 @@ end
 function CleveRoids.CancelAura(auraName)
     local ix = 0
     auraName = string.lower(string.gsub(auraName, "_"," "))
-    while true do
-        local aura_ix = GetPlayerBuff(ix,"HELPFUL")
-        ix = ix + 1
-        if aura_ix == -1 then break end
-        local bid = GetPlayerBuffID(aura_ix)
-        bid = (bid < -1) and (bid + 65536) or bid
-        if string.lower(SpellInfo(bid)) == auraName then
-            CancelPlayerBuff(aura_ix)
-            return true
-        end
-    end
-    return false
+	
+	while true do
+		local aura_ix = GetPlayerBuff(ix,"HELPFUL")
+		ix = ix + 1
+		if aura_ix == -1 then break end
+		
+		if CleveRoids.hasSuperwow then
+			local bid = GetPlayerBuffID(aura_ix)
+			bid = (bid < -1) and (bid + 65536) or bid
+			if string.lower(SpellInfo(bid)) == auraName then
+				CancelPlayerBuff(aura_ix)
+				return true
+			end
+		else
+			AuraScanTooltip:SetPlayerBuff(aura_ix)
+			local name = string.lower(getglobal("AuraScanTooltipTextLeft1"):GetText())
+			if name == auraName then
+				CancelPlayerBuff(aura_ix)
+				break
+			end
+		end
+		
+	end
+	return false
 end
 
 -- Checks whether a given piece of gear is equipped is currently equipped

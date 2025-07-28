@@ -6,6 +6,7 @@
 ## Notes-deDE: Vanilla Macros auf Steroide!
 ## Version: 1.13
 ## OptionalDeps: ClassicFocus, FocusFrame, pfUI, SuperMacro, Bongos_ActionBar
+## SavedVariables: CleveRoidMacros
 Localization.lua
 Init.lua
 Utility.lua

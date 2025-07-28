@@ -11,6 +11,16 @@ CleveRoids.lastItemIndexTime = 0
 CleveRoids.initializationTimer = nil
 CleveRoids.isActionUpdateQueued = true -- Flag to check if a full action update is needed
 
+-- Create a default table if it doesn't exist
+if not CleveRoidMacros then
+    CleveRoidMacros = {}
+end
+
+-- Set realtime to 0 if not set
+if CleveRoidMacros.realtime == nil then
+    CleveRoidMacros.realtime = 0
+end
+
 -- Queues a full update of all action bars.
 -- This is called by game event handlers to avoid running heavy logic inside the event itself.
 function CleveRoids.QueueActionUpdate()
@@ -1338,7 +1348,7 @@ function CleveRoids.OnUpdate(self)
     CleveRoids.lastUpdate = time
 
     -- If a game event has queued an update, run the expensive check.
-    if CleveRoids.isActionUpdateQueued then
+    if CleveRoids.isActionUpdateQueued or CleveRoidMacros.realtime == 1 then
         CleveRoids.TestForAllActiveActions()
         CleveRoids.isActionUpdateQueued = false -- Reset the flag
     end
@@ -1611,7 +1621,15 @@ function IsConsumableAction(slot)
     return CleveRoids.Hooks.IsConsumableAction(slot)
 end
 
-
+-- Create a hidden tooltip frame to read buff names
+if not AuraScanTooltip and not CleveRoids.hasSuperwow then
+    CreateFrame("GameTooltip", "AuraScanTooltip")
+    AuraScanTooltip:SetOwner(WorldFrame, "ANCHORNONE")
+    AuraScanTooltip:AddFontStrings(
+        AuraScanTooltip:CreateFontString("$parentTextLeft1", nil, "GameTooltipText"),
+        AuraScanTooltip:CreateFontString("$parentTextRight1", nil, "GameTooltipText")
+    )
+end
 
 
 -- Dummy Frame to hook ADDON_LOADED event in order to preserve compatiblity with other AddOns like SuperMacro
@@ -1967,3 +1985,38 @@ do
     f:RegisterEvent("PLAYER_LOGIN")
     end
     ---- END of pfUI Focus Fix ----
+
+
+SLASH_CLEVEROID1 = "/cleveroid"
+SLASH_CLEVEROID2 = "/cleveroidmacros"
+
+SlashCmdList["CLEVEROID"] = function(msg)
+    if type(msg) ~= "string" then
+        msg = ""
+    end
+
+    local cmd, val = string.match(msg, "^(%S*)%s*(%S*)$")
+	
+	-- No command: show current value
+    if cmd == "" then
+        CleveRoids.Print("Current Settings:")
+        DEFAULT_CHAT_FRAME:AddMessage("realtime (force fast updates, CPU intensive) = " .. (CleveRoidMacros.realtime == 1 and "true" or "false"))
+        return
+    end
+	
+	-- realtime
+    if cmd == "realtime" then
+        local num = tonumber(val)
+        if num == 0 or num == 1 then
+            CleveRoidMacros.realtime = num
+            CleveRoids.Print("realtime set to " .. num)
+        else
+            CleveRoids.Print("Usage: /cleveroid realtime 0 or 1")
+        end
+        return
+    end
+	
+	-- No or Unknown command fallback
+    CleveRoids.Print("Usage:")
+	DEFAULT_CHAT_FRAME:AddMessage("/cleveroid realtime 0 or 1")
+end
