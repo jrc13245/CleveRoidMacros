@@ -145,6 +145,7 @@ function CleveRoids.GetCurrentShapeshiftIndex()
 end
 
 function CleveRoids.CancelAura(auraName)
+	if not CleveRoids.hasSuperwow then return end
     local ix = 0
     auraName = string.lower(string.gsub(auraName, "_"," "))
     while true do
