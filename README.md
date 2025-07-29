@@ -20,6 +20,10 @@ Check slash command and all conditional lists for new usages!
 2. Click the Add button
 3. Paste the url `https://github.com/jrc13245/CleveRoidMacros`
 4. Download and keep up to date
+### /cleveroid
+/cleveroid - view settings
+/cleveroid realtime x - force realtime updates instead of eventbased updates (1 or 0 - increases CPU load/not stable)
+/cleveroid refresh x - set refreshrate (1 to 10 updates per second - affacts both realtime and eventbased updates)
 --- 
 
 ## Known Issues
