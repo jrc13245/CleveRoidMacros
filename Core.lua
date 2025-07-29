@@ -327,11 +327,10 @@ function CleveRoids.FixEmptyTarget(conditionals)
     if not conditionals.target then
         if UnitExists("target") then
             conditionals.target = "target"
-        elseif GetCVar("autoSelfCast") == "1" then
+        elseif GetCVar("autoSelfCast") == "1" and not conditionals.target == "help" then
             conditionals.target = "player"
         end
     end
-
     return false
 end
 
@@ -734,7 +733,7 @@ function CleveRoids.TestAction(cmd, args)
         -- untestables
         return
     end
-
+	
     if conditionals.target == "focus" then
         local focusUnitId = nil
         -- First, try to get the specific UnitID from pfUI's data for reliability.
@@ -848,6 +847,8 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
             conditionals.target = focusUnitId
             needRetarget = false
         else
+			-- return false if pfUI is installed and no focus is set instead of "invalid target"
+			if (pfUI.uf.focus.label == nil or pfUI.uf.focus.label == "") and pfUI then return false end
             -- If the direct UnitID isn't found, fall back to the original (but likely failing) method of targeting by name.
             if not CleveRoids.TryTargetFocus() then
                 UIErrorsFrame:AddMessage(SPELL_FAILED_BAD_TARGETS, 1.0, 0.0, 0.0, 1.0)
