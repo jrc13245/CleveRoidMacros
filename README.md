@@ -20,16 +20,16 @@ Check slash command and all conditional lists for new usages!
 2. Click the Add button
 3. Paste the url `https://github.com/jrc13245/CleveRoidMacros`
 4. Download and keep up to date
-### /cleveroid Command
+### CleveRoidMacros Settings
 * /cleveroid - view settings
 * /cleveroid realtime 0 or 1 - Force realtime updates rather than event based updates (Default: 0. 1 = on, increases CPU load.)
 * /cleveroid refresh X - Set refresh rate. (1 to 10 updates per second. Default: 5)
 --- 
 
 ## Known Issues
-* To reduce memory usage, conditionals check updates for icons are event based. This means icons using some conditionals that arent triggered by events are slow to change. example: @unitid mod etc.
+* By default, conditional checks to update icons are event based with realtime set to 0. This means icons using some conditionals that arent triggered by events are slow to change. example: @unitid mod etc. Enable realtime setting, but beware increase in cpu usage and lag.
 * ALL macros must be given unique names, no blank names or muliple of the same name or using spell names. 
-* If Any of your macros have syntax errors, it will affect all macros when it comes to errors.
+* If any of your macros have syntax errors, it will affect all macros when it comes to errors.
 * Spells with parenthesis ie: Faerie Fire (Feral) or Barkskin (Feral) MUST be written using ranks, becomming `Faerie Fire (Feral)(Rank X)`
 * Minor: If you improperly create a macro, in some certain cases it can cause strange UI issues including not displaying any icons, other macros not working or lua errors.  Fix the macro or remove it from your actionbar and it should go back to normal automatically.  Depending on the cause, you may need to reload your UI (/rl).  If you find one of these and can reproduce the issue, let me know.
 * Minor: HealComm support.  See [below](#healcomm-support)
@@ -41,6 +41,7 @@ Check slash command and all conditional lists for new usages!
 
 ## Commands and Conditionals
 ### ***Important! Spells, Items, conditionals, etc are case sensitive.  Barring a bug, if there is an issue, it's almost always because something is typed incorrectly.***  
+* New update settings to swap between realtime or event based. Event based is the default and saves cpu and memory usage.
 * New Conditional class/noclass.
 * Conditional exists is now noable.
 * Added alive/dead alias' nodead/noalive.
@@ -156,6 +157,7 @@ Check slash command and all conditional lists for new usages!
 ## Slash Commands
 | Command               | Conditionals Supported | Purpose |
 |-----------------------|          :-:           |---------|
+| /cleveroid |  | show update settings. /cleveroid realtime 0/1 : /cleveroid refresh 1-10 |
 | /target               |  | takes limited conditionals. will target by name first and then if conditionals are not valid will target your last target or clear target. help/harm check in a 40 yd cone in front of you. this is due to client limitations. available conditionals: (help,harm,alive,dead,exists,isplayer,isnpc,type,(no)inrange,(no(de))buff,(raw)hp,(raw)power,(no)casting) |
 | /retarget             |   | Clears your target if it doesn't exist, has 0 hp or if you can't attack it and then targets the nearest enemy. |
 | /startattack          | * | Starts auto-attacking. |
