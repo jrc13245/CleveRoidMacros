@@ -11,20 +11,26 @@ CleveRoids.lastItemIndexTime = 0
 CleveRoids.initializationTimer = nil
 CleveRoids.isActionUpdateQueued = true -- Flag to check if a full action update is needed
 
--- Create a default table if it doesn't exist
-if not CleveRoidMacros then
-    CleveRoidMacros = {}
-end
+local frame = CreateFrame("Frame")
+frame:RegisterEvent("VARIABLES_LOADED")
+frame:SetScript("OnEvent", function()
+    if not CleveRoidMacros then CleveRoidMacros = {} end
 
--- Set realtime to 0 if not set
-if CleveRoidMacros.realtime == nil then
-    CleveRoidMacros.realtime = 0
-end
+    if type(CleveRoidMacros.realtime) ~= "number" then
+        CleveRoidMacros.realtime = 0
+    end
+
+    if type(CleveRoidMacros.refresh) ~= "number" then
+        CleveRoidMacros.refresh = 5
+    end
+end)
 
 -- Queues a full update of all action bars.
 -- This is called by game event handlers to avoid running heavy logic inside the event itself.
 function CleveRoids.QueueActionUpdate()
-    CleveRoids.isActionUpdateQueued = true
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.isActionUpdateQueued = true
+    end
 end
 
 function CleveRoids.GetSpellCost(spellSlot, bookType)
@@ -1331,6 +1337,8 @@ end
 
 function CleveRoids.OnUpdate(self)
     local time = GetTime()
+	local refreshRate = CleveRoidMacros.refresh or 5
+	refreshRate = 1/refreshRate
     if CleveRoids.initializationTimer and time >= CleveRoids.initializationTimer then
         CleveRoids.IndexItems()
         CleveRoids.IndexActionBars()
@@ -1340,23 +1348,27 @@ function CleveRoids.OnUpdate(self)
         CleveRoids.lastUpdate = time
         return
     end
-
     if not CleveRoids.ready then return end
 
-    -- Throttle the OnUpdate loop to avoid excessive CPU usage.
-    if (time - CleveRoids.lastUpdate) < 0.2 then return end
+    -- Throttle the update loop to avoid excessive CPU usage.
+    if (time - CleveRoids.lastUpdate) < refreshRate then return end
     CleveRoids.lastUpdate = time
-
-    -- If a game event has queued an update, run the expensive check.
-    if CleveRoids.isActionUpdateQueued or CleveRoidMacros.realtime == 1 then
+    -- Check the saved variable to decide which update mode to use.
+    if CleveRoidMacros.realtime == 1 then
+        -- Realtime Mode: Force an update on every throttled tick for maximum responsiveness.
         CleveRoids.TestForAllActiveActions()
-        CleveRoids.isActionUpdateQueued = false -- Reset the flag
+    else
+        -- Event-Driven Mode (Default): Only update if a relevant game event has queued it.
+        if CleveRoids.isActionUpdateQueued then
+            CleveRoids.TestForAllActiveActions()
+            CleveRoids.isActionUpdateQueued = false -- Reset the flag after updating
+        end
     end
 
-    -- The rest of this function handles logic that MUST be time-based.
-    if CleveRoids.CurrentSpell.autoAttackLock and (time - CleveRoids.autoAttackLockElapsed) > 0.2 then
+    -- The rest of this function handles time-based logic that must always run.
+    if CleveRoids.CurrentSpell.autoAttackLock and (time - CleveRoids.autoAttackLockElapsed) > refreshRate then
         CleveRoids.CurrentSpell.autoAttackLock = false
-        CleveRoids.CurrentSpell.autoAttackLockElapsed = nil
+        CleveRoids.autoAttackLockElapsed = nil
     end
 
     for _, sequence in pairs(CleveRoids.Sequences) do
@@ -1631,10 +1643,10 @@ if not AuraScanTooltip and not CleveRoids.hasSuperwow then
     )
 end
 
-
--- Dummy Frame to hook ADDON_LOADED event in order to preserve compatiblity with other AddOns like SuperMacro
+-- This single dummy frame handles events AND serves as our tooltip scanner.
 CleveRoids.Frame = CreateFrame("GameTooltip")
 
+-- Create the extra font strings needed for other functions like GetSpellCost.
 CleveRoids.Frame.costFontString = CleveRoids.Frame:CreateFontString()
 CleveRoids.Frame.rangeFontString = CleveRoids.Frame:CreateFontString()
 CleveRoids.Frame.reagentFontString = CleveRoids.Frame:CreateFontString()
@@ -1766,25 +1778,32 @@ function CleveRoids.Frame:UNIT_CASTEVENT(caster,target,action,spell_id,cast_time
             end
         end
     end
-
-    CleveRoids.QueueActionUpdate()
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.QueueActionUpdate()
+    end
 end
 
 function CleveRoids.Frame:SPELLCAST_CHANNEL_START()
     CleveRoids.CurrentSpell.type = "channeled"
-    CleveRoids.QueueActionUpdate()
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.QueueActionUpdate()
+    end
 end
 
 function CleveRoids.Frame:SPELLCAST_CHANNEL_STOP()
     CleveRoids.CurrentSpell.type = ""
     CleveRoids.CurrentSpell.spellName = ""
-    CleveRoids.QueueActionUpdate()
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.QueueActionUpdate()
+    end
 end
 
 function CleveRoids.Frame:PLAYER_ENTER_COMBAT()
     CleveRoids.CurrentSpell.autoAttack = true
     CleveRoids.CurrentSpell.autoAttackLock = false
-    CleveRoids.QueueActionUpdate()
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.QueueActionUpdate()
+    end
 end
 
 function CleveRoids.Frame:PLAYER_LEAVE_COMBAT()
@@ -1795,7 +1814,9 @@ function CleveRoids.Frame:PLAYER_LEAVE_COMBAT()
             CleveRoids.ResetSequence(sequence)
         end
     end
-    CleveRoids.QueueActionUpdate()
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.QueueActionUpdate()
+    end
 end
 
 function CleveRoids.Frame:PLAYER_TARGET_CHANGED()
@@ -1807,7 +1828,9 @@ function CleveRoids.Frame:PLAYER_TARGET_CHANGED()
             CleveRoids.ResetSequence(sequence)
         end
     end
-    CleveRoids.QueueActionUpdate()
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.QueueActionUpdate()
+    end
 end
 
 function CleveRoids.Frame:UPDATE_MACROS()
@@ -1828,7 +1851,9 @@ function CleveRoids.Frame:UPDATE_MACROS()
     CleveRoids.IndexSpells()
     CleveRoids.IndexTalents()
     CleveRoids.IndexActionBars()
-    CleveRoids.QueueActionUpdate()
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.QueueActionUpdate()
+    end
 end
 
 function CleveRoids.Frame:SPELLS_CHANGED()
@@ -1838,7 +1863,9 @@ end
 function CleveRoids.Frame:ACTIONBAR_SLOT_CHANGED()
     CleveRoids.ClearAction(arg1)
     CleveRoids.IndexActionSlot(arg1)
-    CleveRoids.QueueActionUpdate()
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.QueueActionUpdate()
+    end
 end
 
 function CleveRoids.Frame:BAG_UPDATE()
@@ -1852,7 +1879,9 @@ function CleveRoids.Frame:BAG_UPDATE()
         CleveRoids.Actions = {}
         --CleveRoids.Macros = {}
         --CleveRoids.ParsedMsg = {}
-        CleveRoids.QueueActionUpdate()
+        if CleveRoidMacros.realtime == 0 then
+            CleveRoids.QueueActionUpdate()
+        end
     end
 end
 
@@ -1868,7 +1897,9 @@ function CleveRoids.Frame:START_AUTOREPEAT_SPELL()
     else
         CleveRoids.CurrentSpell.wand = true
     end
-    CleveRoids.QueueActionUpdate()
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.QueueActionUpdate()
+    end
 end
 
 function CleveRoids.Frame:STOP_AUTOREPEAT_SPELL()
@@ -1878,16 +1909,42 @@ function CleveRoids.Frame:STOP_AUTOREPEAT_SPELL()
     else
         CleveRoids.CurrentSpell.wand = false
     end
-    CleveRoids.QueueActionUpdate()
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.QueueActionUpdate()
+    end
 end
 
 -- Generic event handlers that just queue an update
-function CleveRoids.Frame:PLAYER_FOCUS_CHANGED() CleveRoids.QueueActionUpdate() end
-function CleveRoids.Frame:UPDATE_SHAPESHIFT_FORM() CleveRoids.QueueActionUpdate() end
-function CleveRoids.Frame:SPELL_UPDATE_COOLDOWN() CleveRoids.QueueActionUpdate() end
-function CleveRoids.Frame:UNIT_AURA() CleveRoids.QueueActionUpdate() end
-function CleveRoids.Frame:UNIT_HEALTH() CleveRoids.QueueActionUpdate() end
-function CleveRoids.Frame:UNIT_POWER() CleveRoids.QueueActionUpdate() end
+function CleveRoids.Frame:PLAYER_FOCUS_CHANGED()
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.QueueActionUpdate()
+    end
+end
+function CleveRoids.Frame:UPDATE_SHAPESHIFT_FORM()
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.QueueActionUpdate()
+    end
+end
+function CleveRoids.Frame:SPELL_UPDATE_COOLDOWN()
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.QueueActionUpdate()
+    end
+end
+function CleveRoids.Frame:UNIT_AURA()
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.QueueActionUpdate()
+    end
+end
+function CleveRoids.Frame:UNIT_HEALTH()
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.QueueActionUpdate()
+    end
+end
+function CleveRoids.Frame:UNIT_POWER()
+    if CleveRoidMacros.realtime == 0 then
+        CleveRoids.QueueActionUpdate()
+    end
+end
 
 
 CleveRoids.Hooks.SendChatMessage = SendChatMessage
@@ -1995,28 +2052,46 @@ SlashCmdList["CLEVEROID"] = function(msg)
         msg = ""
     end
 
-    local cmd, val = string.match(msg, "^(%S*)%s*(%S*)$")
-	
-	-- No command: show current value
+    local cmd, val
+    local s, e, a, b = string.find(msg, "^(%S*)%s*(%S*)$")
+    if a then cmd = a else cmd = "" end
+    if b then val = b else val = "" end
+
+    -- No command: show current value
     if cmd == "" then
         CleveRoids.Print("Current Settings:")
-        DEFAULT_CHAT_FRAME:AddMessage("realtime (force fast updates, CPU intensive) = " .. (CleveRoidMacros.realtime == 1 and "true" or "false"))
+        DEFAULT_CHAT_FRAME:AddMessage("realtime (force fast updates, CPU intensive) = " .. CleveRoidMacros.realtime .. " [0]")
+        DEFAULT_CHAT_FRAME:AddMessage("refresh (updates per second) = " .. CleveRoidMacros.refresh .. " [5]")
         return
     end
-	
-	-- realtime
+
+    -- realtime
     if cmd == "realtime" then
         local num = tonumber(val)
         if num == 0 or num == 1 then
             CleveRoidMacros.realtime = num
             CleveRoids.Print("realtime set to " .. num)
         else
-            CleveRoids.Print("Usage: /cleveroid realtime 0 or 1")
+            CleveRoids.Print("Usage: /cleveroid realtime [0] or 1")
         end
         return
     end
-	
-	-- No or Unknown command fallback
+
+    -- refresh
+    if cmd == "refresh" then
+		local num = tonumber(val)
+		if num and num >= 1 and num <= 10 then
+			CleveRoidMacros.refresh = num
+			CleveRoids.Print("refresh set to " .. num .. " times per second")
+		else
+			CleveRoids.Print("Usage: /cleveroid refresh 1 to 10 (times per second) [5]")
+			CleveRoids.Print("Current refresh = " .. tostring(CleveRoidMacros.refresh) .. " times per second")
+		end
+		return
+	end
+
+    -- Unknown command fallback
     CleveRoids.Print("Usage:")
-	DEFAULT_CHAT_FRAME:AddMessage("/cleveroid realtime 0 or 1")
+    DEFAULT_CHAT_FRAME:AddMessage("/cleveroid realtime [0] or 1")
+    DEFAULT_CHAT_FRAME:AddMessage("/cleveroid refresh 1 to 10 (times per second) [5]")
 end
