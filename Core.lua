@@ -2072,7 +2072,8 @@ SlashCmdList["CLEVEROID"] = function(msg)
             CleveRoidMacros.realtime = num
             CleveRoids.Print("realtime set to " .. num)
         else
-            CleveRoids.Print("Usage: /cleveroid realtime [0] or 1")
+            CleveRoids.Print("Usage: /cleveroid realtime 0 or 1 - Force realtime updates rather than event based updates (Default: 0. 1 = on, increases CPU load.)")
+	    CleveRoids.Print("Current realtime = " .. tostring(CleveRoidMacros.realtime))
         end
         return
     end
@@ -2084,7 +2085,7 @@ SlashCmdList["CLEVEROID"] = function(msg)
 			CleveRoidMacros.refresh = num
 			CleveRoids.Print("refresh set to " .. num .. " times per second")
 		else
-			CleveRoids.Print("Usage: /cleveroid refresh 1 to 10 (times per second) [5]")
+			CleveRoids.Print("Usage: /cleveroid refresh X - Set refresh rate. (1 to 10 updates per second. Default: 5)")
 			CleveRoids.Print("Current refresh = " .. tostring(CleveRoidMacros.refresh) .. " times per second")
 		end
 		return
@@ -2092,6 +2093,6 @@ SlashCmdList["CLEVEROID"] = function(msg)
 
     -- Unknown command fallback
     CleveRoids.Print("Usage:")
-    DEFAULT_CHAT_FRAME:AddMessage("/cleveroid realtime [0] or 1")
-    DEFAULT_CHAT_FRAME:AddMessage("/cleveroid refresh 1 to 10 (times per second) [5]")
+    DEFAULT_CHAT_FRAME:AddMessage("/cleveroid realtime 0 or 1 - Force realtime updates rather than event based updates (Default: 0. 1 = on, increases CPU load.)")
+    DEFAULT_CHAT_FRAME:AddMessage("/cleveroid refresh X - Set refresh rate. (1 to 10 updates per second. Default: 5)")
 end
