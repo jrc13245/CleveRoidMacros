@@ -145,14 +145,13 @@ function CleveRoids.GetCurrentShapeshiftIndex()
 end
 
 function CleveRoids.CancelAura(auraName)
-    local ix = 0
+	local ix = 0
     auraName = string.lower(string.gsub(auraName, "_"," "))
-	
 	while true do
 		local aura_ix = GetPlayerBuff(ix,"HELPFUL")
 		ix = ix + 1
 		if aura_ix == -1 then break end
-		
+
 		if CleveRoids.hasSuperwow then
 			local bid = GetPlayerBuffID(aura_ix)
 			bid = (bid < -1) and (bid + 65536) or bid
@@ -168,7 +167,7 @@ function CleveRoids.CancelAura(auraName)
 				break
 			end
 		end
-		
+
 	end
 	return false
 end
@@ -177,8 +176,20 @@ end
 -- gearId: The name (or item id) of the gear (e.g. Badge_Of_The_Swam_Guard, etc.)
 -- returns: True when equipped, otherwhise false
 function CleveRoids.HasGearEquipped(gearId)
-    local item = CleveRoids.GetItem(gearId)
-    return item and item.inventoryID
+    if not gearId or type(gearId) ~= "string" then
+        return false
+    end
+
+    for i = 1, 19 do
+        local itemLink = GetInventoryItemLink("player", i)
+        if itemLink then
+            local itemName = GetItemInfo(itemLink)
+            if itemName and (string.lower(itemName) == string.lower(gearId)) then
+                return true
+            end
+        end
+    end
+    return false
 end
 
 -- Checks whether or not the given weaponType is currently equipped
