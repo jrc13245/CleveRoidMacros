@@ -22,8 +22,8 @@ Check slash command and all conditional lists for new usages!
 4. Download and keep up to date
 ### /cleveroid Command
 * /cleveroid - view settings
-* /cleveroid realtime x - force realtime updates instead of eventbased updates (1 or 0, standard: 0 - increases CPU load, might break icon updates)
-* /cleveroid refresh x - set refreshrate (1 to 10 updates per second, standard: 5 - affacts both realtime and eventbased updates)
+* /cleveroid realtime 0 or 1 - Force realtime updates rather than event based updates (Default: 0. 1 = on, increases CPU load.)
+* /cleveroid refresh X - Set refresh rate. (1 to 10 updates per second. Default: 5)
 --- 
 
 ## Known Issues
