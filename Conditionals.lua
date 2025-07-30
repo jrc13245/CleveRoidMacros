@@ -205,7 +205,6 @@ function CleveRoids.HasWeaponEquipped(weaponType)
     local slotId = GetInventorySlotInfo(slotName)
     local slotLink = GetInventoryItemLink("player",slotId)
 
-    -- ADD THIS CHECK:
     if not slotLink then
         return false
     end
@@ -1284,6 +1283,26 @@ CleveRoids.Keywords = {
         -- The "And" helper ensures the player's class is not any of the forbidden classes.
         return And(conditionals.noclass, function(forbiddenClass)
             return strlower(forbiddenClass) ~= strlower(localizedClass) and strlower(forbiddenClass) ~= strlower(englishClass)
+        end)
+    end,
+
+    queued = function(conditionals)
+        return Or(conditionals.queue, function (v)
+            -- Find the action slot where this spell is placed.
+            local actionSlot = CleveRoids.GetProxyActionSlot(v)
+            if not actionSlot then return false end
+            -- IsCurrentAction returns true if the spell is toggled on (e.g., Heroic Strike).
+            return IsCurrentAction(actionSlot)
+        end)
+    end,
+
+    noqueued = function(conditionals)
+        return And(conditionals.noqueue, function (v)
+            -- Find the action slot where this spell is placed.
+            local actionSlot = CleveRoids.GetProxyActionSlot(v)
+            if not actionSlot then return true end -- If it's not on an action bar, it can't be queued.
+            -- Return true if the action is NOT currently toggled.
+            return not IsCurrentAction(actionSlot)
         end)
     end
 }

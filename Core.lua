@@ -851,8 +851,8 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
             conditionals.target = focusUnitId
             needRetarget = false
         else
-			-- return false if pfUI is installed and no focus is set instead of "invalid target"
-			if (pfUI.uf.focus.label == nil or pfUI.uf.focus.label == "") and pfUI then return false end
+            -- return false if pfUI is installed and no focus is set instead of "invalid target"
+            if (pfUI.uf.focus.label == nil or pfUI.uf.focus.label == "") and pfUI then return false end
             -- If the direct UnitID isn't found, fall back to the original (but likely failing) method of targeting by name.
             if not CleveRoids.TryTargetFocus() then
                 UIErrorsFrame:AddMessage(SPELL_FAILED_BAD_TARGETS, 1.0, 0.0, 0.0, 1.0)
@@ -1100,7 +1100,6 @@ end
 function CleveRoids.DoUse(msg)
     local handled = false
 
-    -- START of replacement block for the 'action' function
     local action = function(msg)
         -- Try to interpret the message as a direct inventory slot ID first.
         local slotId = tonumber(msg)
@@ -1137,7 +1136,6 @@ function CleveRoids.DoUse(msg)
 
         if (MerchantFrame:IsVisible() and MerchantFrame.selectedTab == 1) then return end
     end
-    -- END of replacement block
 
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
         v = string.gsub(v, "^%?", "")
@@ -1162,8 +1160,6 @@ function CleveRoids.DoUse(msg)
 end
 
 function CleveRoids.EquipBagItem(msg, offhand)
-    -- START of NEW and IMPROVED FIX
-
     -- First, get item data from the addon's own reliable cache.
     local item = CleveRoids.GetItem(msg)
     if not item or not item.name then
@@ -1182,8 +1178,6 @@ function CleveRoids.EquipBagItem(msg, offhand)
             return true
         end
     end
-    -- END of NEW and IMPROVED FIX
-
 
     -- If the check above fails, proceed with the original logic to equip the item.
     -- We can reuse the 'item' object we already found.

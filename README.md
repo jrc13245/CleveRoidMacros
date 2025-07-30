@@ -41,6 +41,7 @@ Check slash command and all conditional lists for new usages!
 
 ## Commands and Conditionals
 ### ***Important! Spells, Items, conditionals, etc are case sensitive.  Barring a bug, if there is an issue, it's almost always because something is typed incorrectly.***  
+* New Alias for stopcasting 'unqueue'
 * New update settings to swap between realtime or event based. Event based is the default and saves cpu and memory usage.
 * New Conditional class/noclass.
 * Conditional exists is now noable.
@@ -163,6 +164,7 @@ Check slash command and all conditional lists for new usages!
 | /startattack          | * | Starts auto-attacking. |
 | /stopattack           | * | Stops auto-attacking. |
 | /stopcasting          | * | Stops casting. |
+| /unqueue          | * | Stops casting. |
 | /petattack            | * | Starts your pet's auto-attack. |
 | /castsequence         | * | Performs a cast sequence.  See [below](#cast-sequence) for more infomation. |
 | /equip                | * | Equips an item by name or itemid. |
