@@ -546,9 +546,14 @@ function CleveRoids.ParseMacro(name)
 
             -- #showtooltip and item/spell/macro specified, only use this tooltip
             if st and tt ~= "" then
-                macro.actions.tooltip = CleveRoids.CreateActionInfo(tt)
-                macro.actions.cmd = cmd
-                macro.actions.args = tt
+				for _, arg in CleveRoids.splitStringIgnoringQuotes(tt) do
+					macro.actions.tooltip = CleveRoids.CreateActionInfo(arg)
+					local action = CleveRoids.CreateActionInfo(CleveRoids.GetParsedMsg(arg))
+					action.cmd = "/cast"
+					action.args = arg
+					action.isReactive = CleveRoids.reactiveSpells[action.action]
+					table.insert(macro.actions.list, action)
+				end
                 break
             end
         else
@@ -563,7 +568,6 @@ function CleveRoids.ParseMacro(name)
                             action.sequence = sequence
                         end
                     end
-
                     action.cmd = cmd
                     action.args = arg
                     action.isReactive = CleveRoids.reactiveSpells[action.action]
@@ -2061,8 +2065,8 @@ SlashCmdList["CLEVEROID"] = function(msg)
     -- No command: show current value
     if cmd == "" then
         CleveRoids.Print("Current Settings:")
-        DEFAULT_CHAT_FRAME:AddMessage("realtime (force fast updates, CPU intensive) = " .. CleveRoidMacros.realtime .. " [0]")
-        DEFAULT_CHAT_FRAME:AddMessage("refresh (updates per second) = " .. CleveRoidMacros.refresh .. " [5]")
+        DEFAULT_CHAT_FRAME:AddMessage("realtime (force fast updates, CPU intensive) = " .. CleveRoidMacros.realtime .. " (Default: 0)")
+        DEFAULT_CHAT_FRAME:AddMessage("refresh (updates per second) = " .. CleveRoidMacros.refresh .. " (Default: 5)")
         return
     end
 
