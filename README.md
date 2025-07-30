@@ -295,7 +295,6 @@ Check slash command and all conditional lists for new usages!
 | zone           | [zone:"Zone"]<br/>[zone:"Zone"/"Another Zone"] | * | * | If the player is in one or more zones of the given name. |
 | checkchanneled | [checkchanneled] | * |  | Prevents a spell from being cast if you are already channeling it. |
 | stat | [stat:stat>=x] |  |  | Check if one of the players statistics is greater or less than a specific number. Available Stats: str/strength, agi/agility, stam/stamina, int/intellect, spi/spirit, ap/attackpower, rap/rangedattackpower, healing/healingpower, arcane_power, fire_power, frost_power, nature_power, shadow_power, armor, defense, arcane_res, fire_res, frost_res, nature_res, shadow_res. |
-| queued      | [queued]Spellname |  | * | If the player is currently queuing the spell. |
 
 ### Unit Based
 ### The default @unitid is usually @target if you don't specify one
