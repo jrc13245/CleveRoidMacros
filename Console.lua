@@ -115,6 +115,18 @@ SlashCmdList.STOPCASTING = function(msg)
     end
 end
 
+CleveRoids.Hooks.UNQUEUE_SlashCmd = SlashCmdList.UNQUEUE
+SlashCmdList.UNQUEUE = function(msg)
+    msg = msg or ""
+    if string.find(msg, "%[") then
+        -- If conditionals are present, let the function handle it.
+        CleveRoids.DoConditionalStopCasting(msg)
+    else
+        -- If no conditionals, run the original command.
+        CleveRoids.Hooks.UNQUEUE_SlashCmd()
+    end
+end
+
 -- /cast hook
 CleveRoids.Hooks.CAST_SlashCmd = SlashCmdList.CAST
 SlashCmdList.CAST = function(msg)
