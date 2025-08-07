@@ -91,14 +91,6 @@ end
 -- target: The unit id to check
 -- help: Optional. If set to 1 then the target must be friendly. If set to 0 it must be an enemy
 -- returns: Whether or not the target is a viable target
--- Ensures the validity of the given target
--- target: The unit id to check
--- help: Optional. If set to 1 then the target must be friendly. If set to 0 it must be an enemy
--- returns: Whether or not the target is a viable target
--- Ensures the validity of the given target
--- target: The unit id to check
--- help: Optional. If set to 1 then the target must be friendly. If set to 0 it must be an enemy
--- returns: Whether or not the target is a viable target
 function CleveRoids.IsValidTarget(target, help)
     -- If the conditional is not for @mouseover, use the existing logic.
     if target ~= "mouseover" then
@@ -108,26 +100,26 @@ function CleveRoids.IsValidTarget(target, help)
         return true
     end
 
-    local effectiveMouseoverUnit = "mouseover"
-    local pfuiMouseoverUnit = nil
+    -- --- START OF PATCH ---
+    -- New logic to handle [@mouseover] with pfUI compatibility.
 
-    -- Step 1: Prioritize the pfUI mouseover unit if it's available and valid.
-    if pfUI and pfUI.uf and pfUI.uf.mouseover and pfUI.uf.mouseover.unit then
-        if UnitExists(pfUI.uf.mouseover.unit) then
-            pfuiMouseoverUnit = pfUI.uf.mouseover.unit
+    local effectiveMouseoverUnit = "mouseover" -- Start with the default game token.
+
+    -- Check if the default mouseover exists. If not, check pfUI's internal data,
+    -- which is necessary because pfUI frames don't always update the default token.
+    if not UnitExists(effectiveMouseoverUnit) then
+        if pfUI and pfUI.uf and pfUI.uf.mouseover and pfUI.uf.mouseover.unit and UnitExists(pfUI.uf.mouseover.unit) then
+            -- If pfUI has a valid mouseover unit recorded, use that instead.
+            effectiveMouseoverUnit = pfUI.uf.mouseover.unit
+        else
+            -- If neither the default token nor the pfUI unit exists, there's no valid mouseover.
+            return false
         end
     end
+    -- --- END OF PATCH ---
 
-    -- Step 2: Use the pfUI unit if found. Otherwise, check the default game mouseover.
-    if pfuiMouseoverUnit then
-        effectiveMouseoverUnit = pfuiMouseoverUnit
-    elseif not UnitExists("mouseover") then
-        -- If neither pfUI nor the default mouseover exists, there's no valid target.
-        return false
-    end
-
-    -- Step 3: Perform the help/harm check on the determined mouseover unit.
-    if not CleveRoids.CheckHelp(effectiveMouseoverUnit, help) then
+    -- Finally, perform the help/harm check on the determined mouseover unit (either from the game or from pfUI).
+    if not UnitExists(effectiveMouseoverUnit) or not CleveRoids.CheckHelp(effectiveMouseoverUnit, help) then
         return false
     end
 

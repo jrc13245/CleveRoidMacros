@@ -823,10 +823,10 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
     if conditionals.target == "mouseover" then
         if UnitExists("mouseover") then
             conditionals.target = "mouseover"
-        elseif pfUI and pfUI.uf and pfUI.uf.mouseover and pfUI.uf.mouseover.unit and UnitExists(pfUI.uf.mouseover.unit) then
-             conditionals.target = pfUI.uf.mouseover.unit
+        elseif CleveRoids.mouseoverUnit and UnitExists(CleveRoids.mouseoverUnit) then
+            conditionals.target = CleveRoids.mouseoverUnit
         else
-            conditionals.target = nil
+            conditionals.target = "mouseover"
         end
     end
 
@@ -835,14 +835,33 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
         needRetarget = fixEmptyTargetFunc(conditionals, msg, hook)
     end
 
+    -- CleveRoids.SetHelp(conditionals)
+
     if conditionals.target == "focus" then
-        if not CleveRoids.TryTargetFocus() then
-            UIErrorsFrame:AddMessage(SPELL_FAILED_BAD_TARGETS, 1.0, 0.0, 0.0, 1.0)
-            conditionals.target = origTarget
-            return false
+        local focusUnitId = nil
+
+        -- Attempt to get the direct UnitID from pfUI's focus frame data. This is more reliable.
+        if pfUI and pfUI.uf and pfUI.uf.focus and pfUI.uf.focus.label and pfUI.uf.focus.id and UnitExists(pfUI.uf.focus.label .. pfUI.uf.focus.id) then
+            focusUnitId = pfUI.uf.focus.label .. pfUI.uf.focus.id
         end
-        conditionals.target = "target"
-        needRetarget = true
+
+        if focusUnitId then
+                -- If we found a valid UnitID, we will use it for all subsequent checks and the final cast.
+                -- This avoids changing the player's actual target.
+            conditionals.target = focusUnitId
+            needRetarget = false
+        else
+            -- return false if pfUI is installed and no focus is set instead of "invalid target"
+            if (pfUI.uf.focus.label == nil or pfUI.uf.focus.label == "") and pfUI then return false end
+            -- If the direct UnitID isn't found, fall back to the original (but likely failing) method of targeting by name.
+            if not CleveRoids.TryTargetFocus() then
+                UIErrorsFrame:AddMessage(SPELL_FAILED_BAD_TARGETS, 1.0, 0.0, 0.0, 1.0)
+                conditionals.target = origTarget
+                return false
+            end
+            conditionals.target = "target"
+            needRetarget = true
+        end
     end
 
     for k, v in pairs(conditionals) do
@@ -858,42 +877,52 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
         end
     end
 
-    -- SuperWoW allows casting on a unit without switching the target
-    if CleveRoids.hasSuperwow and action == CastSpellByName then
-        CastSpellByName(msg, conditionals.target)
-    else
-        -- If not SuperWoW or not a spell, proceed with the original logic.
-        if conditionals.target and targetBeforeAction and not UnitIsUnit("target", conditionals.target) then
+    if conditionals.target ~= nil and targetBeforeAction and not (CleveRoids.hasSuperwow and action == CastSpellByName) then
+        if not UnitIsUnit("target", conditionals.target) then
             if SpellIsTargeting() then
                 SpellStopCasting()
             end
             TargetUnit(conditionals.target)
             needRetarget = true
-        end
-
-        if action == "STOPMACRO" then
-            CleveRoids.stopmacro = true
-            return true
-        end
-
-        local result = true
-        if string.sub(msg, 1, 1) == "{" and string.sub(msg, -1) == "}" then
-            if string.sub(msg, 2, 2) == "\"" and string.sub(msg, -2,-2) == "\"" then
-                result = CleveRoids.ExecuteMacroBody(string.sub(msg, 3, -3), true)
-            else
-                result = CleveRoids.ExecuteMacroByName(string.sub(msg, 2, -2))
-            end
         else
-            action(msg)
+             if needRetarget then needRetarget = false end
         end
+    elseif needRetarget then
+        TargetLastTarget()
+        needRetarget = false
+    end
 
-        if needRetarget then
-            TargetLastTarget()
+    if action == "STOPMACRO" then
+        CleveRoids.stopmacro = true
+        return true
+    end
+
+    local result = true
+    if string.sub(msg, 1, 1) == "{" and string.sub(msg, -1) == "}" then
+        if string.sub(msg, 2, 2) == "\"" and string.sub(msg, -2,-2) == "\"" then
+            result = CleveRoids.ExecuteMacroBody(string.sub(msg, 3, -3), true)
+        else
+            result = CleveRoids.ExecuteMacroByName(string.sub(msg, 2, -2))
+        end
+    else -- This 'else' corresponds to 'if string.sub(msg, 1, 1) == "{"...'
+        if CleveRoids.hasSuperwow and action == CastSpellByName and conditionals.target then
+            CastSpellByName(msg, conditionals.target) -- SuperWoW handles targeting via argument
+        elseif action == CastSpellByName then
+             -- For standard CastSpellByName, targeting is handled by the TargetUnit call above.
+             -- Pass only the spell name.
+            action(msg)
+        else
+            -- For other actions like UseContainerItem etc.
+            action(msg)
         end
     end
 
+    if needRetarget then
+        TargetLastTarget()
+    end
+
     conditionals.target = origTarget
-    return true
+    return result
 end
 
 -- Attempts to cast a single spell from the given set of conditional spells
@@ -910,73 +939,82 @@ function CleveRoids.DoCast(msg)
     return handled
 end
 
--- Attempts to conditionally target a unit.
+-- Target using GUIDs and the correct :Click() method for targeting.
 function CleveRoids.DoTarget(msg)
     local action, conditionals = CleveRoids.GetParsedMsg(msg)
 
-    -- If there are no conditionals or the action isn't a valid macro/command,
-    -- fall back to the original /target handler.
-    if not conditionals or not next(conditionals) then
+    if action ~= "" or not next(conditionals) then
         CleveRoids.Hooks.TARGET_SlashCmd(msg)
         return true
     end
 
-    -- Preserve the original target's GUID to restore it later if needed.
-    local originalTarget = "target"
-    local _, original_guid = UnitExists("target")
-    if original_guid then originalTarget = original_guid end
-
-    local targetToUse = nil
-
-    -- Check for a specific target unit first (e.g., @mouseover, @focus)
-    if conditionals.target == "mouseover" then
-        local pfuiMouseoverUnit = nil
-        if pfUI and pfUI.uf and pfUI.uf.mouseover and pfUI.uf.mouseover.unit and UnitExists(pfUI.uf.mouseover.unit) then
-            pfuiMouseoverUnit = pfUI.uf.mouseover.unit
+    -- Helper function validates a unit via its GUID.
+    local function IsGuidValid(guid, conds)
+        if not guid or not UnitExists(guid) or UnitIsDeadOrGhost(guid) then
+            return false
         end
-
-        if pfuiMouseoverUnit then
-            targetToUse = pfuiMouseoverUnit
-        elseif UnitExists("mouseover") then
-            targetToUse = "mouseover"
-        end
-    elseif conditionals.target == "focus" then
-        if UnitExists("focus") then
-            targetToUse = "focus"
-        end
-    elseif conditionals.target and UnitExists(conditionals.target) then
-        targetToUse = conditionals.target
-    end
-
-    -- If we have a potential target, check if it meets all other conditions.
-    if targetToUse then
-        local targetMeetsConditions = true
-
-        -- Temporarily set the conditional target to the unit we're checking.
-        local oldConditionalTarget = conditionals.target
-        conditionals.target = targetToUse
-
-        for k, v in pairs(conditionals) do
-            -- Ignore keywords that are not meant for validation.
-            if not CleveRoids.ignoreKeywords[k] and CleveRoids.Keywords[k] then
-                if not CleveRoids.Keywords[k](conditionals) then
-                    targetMeetsConditions = false
+        local originalCondTarget = conds.target
+        conds.target = guid
+        local allConditionsMet = true
+        for k, v in pairs(conds) do
+            if not CleveRoids.ignoreKeywords[k] then
+                if not CleveRoids.Keywords[k] or not CleveRoids.Keywords[k](conds) then
+                    allConditionsMet = false
                     break
                 end
             end
         end
+        conds.target = originalCondTarget
+        return allConditionsMet
+    end
 
-        -- Restore the original conditional target.
-        conditionals.target = oldConditionalTarget
+    -- 1. If your current target is already valid, do nothing.
+    local _, originalTargetGUID = UnitExists("target")
+    if originalTargetGUID and IsGuidValid(originalTargetGUID, conditionals) then
+        return true
+    end
 
-        if targetMeetsConditions then
-            TargetUnit(targetToUse)
+    -- 2. Build a list of candidates to check.
+    --    This table will store the GUID and the object needed to target it.
+    local candidates = {}
+    local children = { WorldFrame:GetChildren() }
+
+    -- Add party and raid members.
+    for i = 1, 40 do
+        local unit = (i <= 4) and "party"..i or "raid"..i
+        local _, guid = UnitExists(unit)
+        if guid then
+            table.insert(candidates, { guid = guid, unitId = unit })
+        end
+    end
+
+    -- Add nameplate units.
+    for _, frame in ipairs(children) do
+        if frame and frame.GetName and frame.Click then -- Ensure it's a clickable nameplate
+            local guid = frame:GetName(1)
+            if guid then
+                table.insert(candidates, { guid = guid, frame = frame })
+            end
+        end
+    end
+
+    -- 3. Find the first valid candidate and target it.
+    for _, candidate in ipairs(candidates) do
+        if IsGuidValid(candidate.guid, conditionals) then
+            -- Found a winner. Target it using the appropriate method.
+            if candidate.unitId then
+                -- It's a party/raid member, target by its unit token.
+                TargetUnit(candidate.unitId)
+            elseif candidate.frame then
+                -- It's a world mob, target by simulating a click on its nameplate frame.
+                candidate.frame:Click()
+            end
             return true
         end
     end
 
-    -- If no target was found or no conditions were met, do nothing.
-    return false
+    -- 4. If no valid new target was found, do nothing, preserving your original target.
+    return true
 end
 
 -- Attempts to attack a unit by a set of conditionals
@@ -1348,11 +1386,8 @@ end
 -- Initialize the nested table for the GameTooltip hooks if it doesn't exist
 if not CleveRoids.Hooks.GameTooltip then CleveRoids.Hooks.GameTooltip = {} end
 
--- Initialize the nested table for the GameTooltip hooks if it doesn't exist
-if not CleveRoids.Hooks.GameTooltip then CleveRoids.Hooks.GameTooltip = {} end
-
 -- Save the original GameTooltip.SetAction function before we override it
-local original_GameTooltip_SetAction = GameTooltip.SetAction
+CleveRoids.Hooks.GameTooltip.SetAction = GameTooltip.SetAction
 
 -- Now, define our custom version of the function
 function GameTooltip.SetAction(self, slot)
@@ -1443,7 +1478,7 @@ function GameTooltip.SetAction(self, slot)
     end
 
     -- If none of our custom logic handled it, call the original function we saved earlier.
-    original_GameTooltip_SetAction(self, slot)
+    CleveRoids.Hooks.GameTooltip.SetAction(self, slot)
 end
 
 CleveRoids.Hooks.PickupAction = PickupAction
