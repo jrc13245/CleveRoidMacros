@@ -20,7 +20,7 @@ Compatibility\pfUI.lua
 Compatibility\Bongos.lua
 
 Extensions\MacroLengthWarn.lua
-Extensions\Mouseover\GameTooltip.lua
+Extensions\Mouseover\MouseoverTracker.lua
 Extensions\Mouseover\Blizzard.lua
 Extensions\Mouseover\CT_RaidAssist.lua
 Extensions\Mouseover\CT_UnitFrames.lua

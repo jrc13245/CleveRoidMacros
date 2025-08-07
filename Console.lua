@@ -137,23 +137,14 @@ SlashCmdList.CAST = function(msg)
     end
 end
 
+-- New /target hook using the core DoTarget function
+SLASH_TARGET1 = "/target"
 CleveRoids.Hooks.TARGET_SlashCmd = SlashCmdList.TARGET
-CleveRoids.TARGET_SlashCmd = function(msg)
-    tmsg = CleveRoids.Trim(msg)
-
-    if tmsg ~= "" and not string.find(tmsg, "%[") and not string.find(tmsg, "@") then
-        CleveRoids.Hooks.TARGET_SlashCmd(tmsg)
-        return
+SlashCmdList.TARGET = function(msg)
+    if not CleveRoids.DoTarget(msg) then
+        CleveRoids.Hooks.TARGET_SlashCmd(msg)
     end
-
-    if CleveRoids.DoTarget(tmsg) then
-        if UnitExists("target") then
-            return
-        end
-    end
-    CleveRoids.Hooks.TARGET_SlashCmd(msg)
 end
-SlashCmdList.TARGET = CleveRoids.TARGET_SlashCmd
 
 
 SLASH_CASTSEQUENCE1 = "/castsequence"
