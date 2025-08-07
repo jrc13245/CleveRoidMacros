@@ -793,20 +793,19 @@ end
 function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBeforeAction, action)
     local msg, conditionals = CleveRoids.GetParsedMsg(msg)
 
-    -- Handle macros first, before any other logic.
-    if msg and string.sub(msg, 1, 1) == "{" and string.sub(msg, -1) == "}" then
-        if string.sub(msg, 2, 2) == "\"" and string.sub(msg, -2, -2) == "\"" then
-            return CleveRoids.ExecuteMacroBody(string.sub(msg, 3, -3), true)
-        else
-            return CleveRoids.ExecuteMacroByName(string.sub(msg, 2, -2))
-        end
-    end
-
     -- No conditionals. Just exit.
     if not conditionals then
         if not msg then -- if not even an empty string
             return false
         else
+            if string.sub(msg, 1, 1) == "{" and string.sub(msg, -1) == "}" then
+                if string.sub(msg, 2, 2) == "\"" and string.sub(msg, -2, -2) == "\"" then
+                    return CleveRoids.ExecuteMacroBody(string.sub(msg, 3, -3), true)
+                else
+                    return CleveRoids.ExecuteMacroByName(string.sub(msg, 2, -2))
+                end
+            end
+
             if hook then
                 hook(msg)
             end
@@ -901,23 +900,11 @@ end
 -- msg: The player's macro text
 function CleveRoids.DoCast(msg)
     local handled = false
-    local parts = CleveRoids.splitStringIgnoringQuotes(msg)
 
-    for k, v in pairs(parts) do
-        -- Check if it's a macro reference first
-        local macroName = CleveRoids.GetMacroNameFromAction(v)
-        if macroName then
-            -- If it's a macro, try to execute it
-            if CleveRoids.ExecuteMacroByName(macroName) then
-                handled = true
-                break
-            end
-        else
-            -- If not a macro, proceed with the original casting logic
-            if CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, not CleveRoids.hasSuperwow, CastSpellByName) then
-                handled = true
-                break
-            end
+    for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
+        if CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, not CleveRoids.hasSuperwow, CastSpellByName) then
+            handled = true -- we parsed at least one command
+            break
         end
     end
     return handled
