@@ -91,6 +91,14 @@ end
 -- target: The unit id to check
 -- help: Optional. If set to 1 then the target must be friendly. If set to 0 it must be an enemy
 -- returns: Whether or not the target is a viable target
+-- Ensures the validity of the given target
+-- target: The unit id to check
+-- help: Optional. If set to 1 then the target must be friendly. If set to 0 it must be an enemy
+-- returns: Whether or not the target is a viable target
+-- Ensures the validity of the given target
+-- target: The unit id to check
+-- help: Optional. If set to 1 then the target must be friendly. If set to 0 it must be an enemy
+-- returns: Whether or not the target is a viable target
 function CleveRoids.IsValidTarget(target, help)
     -- If the conditional is not for @mouseover, use the existing logic.
     if target ~= "mouseover" then
