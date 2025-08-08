@@ -5,7 +5,6 @@
 local _G = _G or getfenv(0)
 local CleveRoids = _G.CleveRoids or {} -- redundant since we're loading first but peace of mind if another file is added top of chain
 
-
 function CleveRoids.Seq(_, i)
     return (i or 0) + 1
 end

@@ -119,6 +119,22 @@ function Extension.RegisterRaidScripts()
     end
 end
 
+local function SafeHookFrameMouseover(frame, unit, onenter, onleave)
+    if not frame or frame._cleveroid_mouseover_hooked then return end
+    frame._cleveroid_mouseover_hooked = true
+
+    frame:SetScript("OnEnter", function()
+        CleveRoids.mouseoverUnit = unit
+        if onenter then onenter() end
+    end)
+    frame:SetScript("OnLeave", function()
+        if CleveRoids.mouseoverUnit == unit then
+            CleveRoids.mouseoverUnit = nil
+        end
+        if onleave then onleave() end
+    end)
+end
+
 
 function Extension.PLAYER_ENTERING_WORLD()
     if not pfUI or not pfUI.uf then

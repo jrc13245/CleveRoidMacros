@@ -72,6 +72,9 @@ SlashCmdList.STOPATTACK = StopAttack
 SLASH_STOPCASTING1 = "/stopcasting"
 SlashCmdList.STOPCASTING = SpellStopCasting
 
+SLASH_TAR1 = "/tar"
+SlashCmdList.TAR = SlashCmdList.TARGET
+
 ----------------------------------
 -- HOOK DEFINITIONS START
 ----------------------------------
@@ -154,7 +157,6 @@ CleveRoids.TARGET_SlashCmd = function(msg)
     CleveRoids.Hooks.TARGET_SlashCmd(msg)
 end
 SlashCmdList.TARGET = CleveRoids.TARGET_SlashCmd
-
 
 SLASH_CASTSEQUENCE1 = "/castsequence"
 SlashCmdList.CASTSEQUENCE = function(msg)

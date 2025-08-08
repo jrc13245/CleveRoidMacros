@@ -16,6 +16,16 @@ CleveRoids.mouseOverUnit = nil
 
 CleveRoids.hasSuperwow = SetAutoloot and true or false
 
+local cleanupEvents = {"PLAYER_TARGET_CHANGED", "PLAYER_ENTERING_WORLD", "PLAYER_LEAVING_WORLD"}
+local function ClearMouseoverUnit()
+    CleveRoids.mouseoverUnit = nil
+end
+for _, event in ipairs(cleanupEvents) do
+    local f = CreateFrame("Frame")
+    f:RegisterEvent(event)
+    f:SetScript("OnEvent", ClearMouseoverUnit)
+end
+
 CleveRoids.ParsedMsg = {}
 CleveRoids.Items     = {}
 CleveRoids.Spells    = {}
@@ -55,6 +65,7 @@ CleveRoids.dynamicCmds = {
     ["/equip"]        = true,
     ["/equipmh"]      = true,
     ["/equipoh"]      = true,
+    ["/target"]       = true
 }
 
 CleveRoids.ignoreKeywords = {
