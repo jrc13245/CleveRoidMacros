@@ -18,6 +18,7 @@ function Extension.RegisterMouseoverForFrame(frame, unit)
 
     frame:SetScript("OnEnter", function()
         CleveRoids.mouseoverUnit = unit
+         CleveRoids.QueueActionUpdate()
         if onenter then
             onenter()
         end
@@ -25,6 +26,7 @@ function Extension.RegisterMouseoverForFrame(frame, unit)
 
     frame:SetScript("OnLeave", function()
         CleveRoids.mouseoverUnit = nil
+        CleveRoids.QueueActionUpdate()
         if onleave then
             onleave()
         end
@@ -37,11 +39,13 @@ local function SafeHookFrameMouseover(frame, unit, onenter, onleave)
 
     frame:SetScript("OnEnter", function()
         CleveRoids.mouseoverUnit = unit
+        CleveRoids.QueueActionUpdate()
         if onenter then onenter() end
     end)
     frame:SetScript("OnLeave", function()
         if CleveRoids.mouseoverUnit == unit then
             CleveRoids.mouseoverUnit = nil
+            CleveRoids.QueueActionUpdate()
         end
         if onleave then onleave() end
     end)

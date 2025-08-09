@@ -9,11 +9,13 @@ local Extension = CleveRoids.RegisterExtension("GameTooltipMouseover")
 function Extension.SetUnit(_, unit)
 -- Just store the unit, don't change mouseover state
 CleveRoids.mouseoverUnit = unit
+CleveRoids.QueueActionUpdate()
 end
 
 function Extension.OnClose()
 -- Clear stored mouseover when tooltip closes
 CleveRoids.mouseoverUnit = nil
+CleveRoids.QueueActionUpdate()
 end
 
 function Extension.OnLoad()

@@ -340,7 +340,7 @@ function CleveRoids.FixEmptyTarget(conditionals)
     if not conditionals.target then
         if UnitExists("target") then
             conditionals.target = "target"
-        elseif GetCVar("autoSelfCast") == "1" and (conditionals.help or false) then
+        elseif GetCVar("autoSelfCast") == "1" and not conditionals.target == "help" then
             conditionals.target = "player"
         end
     end
@@ -2196,3 +2196,36 @@ SlashCmdList["CLEVEROID"] = function(msg)
     DEFAULT_CHAT_FRAME:AddMessage("/cleveroid realtime 0 or 1 - Force realtime updates rather than event based updates (Default: 0. 1 = on, increases CPU load.)")
     DEFAULT_CHAT_FRAME:AddMessage("/cleveroid refresh X - Set refresh rate. (1 to 10 updates per second. Default: 5)")
 end
+
+-- === Unitframe Mouseover → #showtooltip icon updater ===
+do
+  -- 1) Hook GameTooltip:SetUnit to capture the exact UnitID a frame provides.
+  if not CleveRoids.Hooks.GameTooltip then CleveRoids.Hooks.GameTooltip = {} end
+  if not CleveRoids.Hooks.GameTooltip.SetUnit then
+    CleveRoids.Hooks.GameTooltip.SetUnit = GameTooltip.SetUnit
+    function GameTooltip:SetUnit(unit)
+      -- Record the live unitid behind the tooltip
+      CleveRoids.mouseoverUnit = unit
+      -- Re-evaluate actions so #showtooltip picks the right icon
+      CleveRoids.QueueActionUpdate()
+      -- Call original
+      return CleveRoids.Hooks.GameTooltip.SetUnit(self, unit)
+    end
+  end
+
+  -- 2) Clear the mouseover when the tooltip hides, then refresh icons.
+  -- Vanilla doesn't have :HookScript, so wrap :Hide() directly.
+  if not CleveRoids.Hooks.GameTooltip.Hide then
+    CleveRoids.Hooks.GameTooltip.Hide = GameTooltip.Hide
+    function GameTooltip:Hide()
+      local r = CleveRoids.Hooks.GameTooltip.Hide(self)
+      -- Only clear if we were showing a unit; harmless otherwise.
+      if CleveRoids.mouseoverUnit then
+        CleveRoids.mouseoverUnit = nil
+        CleveRoids.QueueActionUpdate()
+      end
+      return r
+    end
+  end
+end
+

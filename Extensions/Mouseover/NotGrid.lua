@@ -13,10 +13,12 @@ Extension.RegisterEvent("ADDON_LOADED", "OnLoad")
 
 function Extension.OnEnter()
     CleveRoids.mouseoverUnit = this.unit
+    CleveRoids.QueueActionUpdate()
 end
 
 function Extension.OnLeave()
     CleveRoids.mouseoverUnit = nil
+    CleveRoids.QueueActionUpdate()
 end
 
 function CleveRoids:NotGrid_CreateFrames()
