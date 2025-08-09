@@ -11,6 +11,15 @@ CleveRoids.lastItemIndexTime = 0
 CleveRoids.initializationTimer = nil
 CleveRoids.isActionUpdateQueued = true -- Flag to check if a full action update is needed
 
+CleveRoids.actionEventHandlers = CleveRoids.actionEventHandlers or {}
+
+function CleveRoids.RegisterActionEventHandler(fn)
+  if type(fn) == "function" then
+    table.insert(CleveRoids.actionEventHandlers, fn)
+  end
+end
+
+
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("VARIABLES_LOADED")
 frame:SetScript("OnEvent", function()
@@ -24,6 +33,10 @@ frame:SetScript("OnEvent", function()
         CleveRoidMacros.refresh = 5
     end
 end)
+
+local function CR_LinkName(link)
+    return link and string.match(link, "%[(.+)%]") or nil
+end
 
 -- Queues a full update of all action bars.
 -- This is called by game event handlers to avoid running heavy logic inside the event itself.
@@ -615,7 +628,7 @@ function CleveRoids.ParseMsg(msg)
         conditionals.target = string.sub(target, 2)
     end
 
-    if conditionBlock and action then
+    if conditionBlock then
         -- Split the conditional block by comma or space
         for _, conditionGroups in CleveRoids.splitStringIgnoringQuotes(conditionBlock, {",", " "}) do
             if conditionGroups ~= "" then
@@ -625,13 +638,19 @@ function CleveRoids.ParseMsg(msg)
 
                 -- No args, the action is the implicit argument
                 if not args or args == "" then
+                    local implicit = action or ""
+                    implicit = string.gsub(implicit, '"', "")
+                    implicit = string.gsub(implicit, "_", " ")
+                    implicit = CleveRoids.Trim(implicit)
+                    if implicit == "" then implicit = true end -- supports flags like [combat]
+
                     if not conditionals[condition] then
-                        conditionals[condition] = action
+                        conditionals[condition] = implicit
                     else
                         if type(conditionals[condition]) ~= "table" then
-                           conditionals[condition] = { conditionals[condition] }
+                        conditionals[condition] = { conditionals[condition] }
                         end
-                        table.insert(conditionals[condition], action)
+                        table.insert(conditionals[condition], implicit)
                     end
                 else
                     -- Has args. Ensure the key's value is a table and add the new arguments.
@@ -1055,210 +1074,271 @@ function CleveRoids.DoPetAttack(msg)
     return handled
 end
 
--- Attempts to conditionally start an attack. Returns false if no conditionals are found.
 function CleveRoids.DoConditionalStartAttack(msg)
-    if not string.find(msg, "%[") then return false end
-
-    local handled = false
-    local action = function()
-        if not UnitExists("target") or UnitIsDead("target") then TargetNearestEnemy() end
-        if not CleveRoids.CurrentSpell.autoAttack and not CleveRoids.CurrentSpell.autoAttackLock and UnitExists("target") and UnitCanAttack("player", "target") then
-            CleveRoids.CurrentSpell.autoAttackLock = true
-            CleveRoids.autoAttackLockElapsed = GetTime()
-            AttackTarget()
-        end
+  if not string.find(msg or "", "%[") then return false end
+  local handled = false
+  local action = function()
+    if not UnitExists("target") or UnitIsDead("target") then TargetNearestEnemy() end
+    if not CleveRoids.CurrentSpell.autoAttack
+       and not CleveRoids.CurrentSpell.autoAttackLock
+       and UnitExists("target")
+       and UnitCanAttack("player","target") then
+      CleveRoids.CurrentSpell.autoAttackLock = true
+      CleveRoids.autoAttackLockElapsed = GetTime()
+      AttackTarget()
     end
-
-    for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
-        -- We pass 'nil' for the hook, so DoWithConditionals does nothing if it fails to parse conditionals.
-        if CleveRoids.DoWithConditionals(v, nil, CleveRoids.FixEmptyTarget, false, action) then
-            handled = true
-            break
-        end
+  end
+  for _, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg or "")) do
+    if CleveRoids.DoWithConditionals(v, nil, CleveRoids.FixEmptyTarget, false, action) then
+      handled = true; break
     end
-    return handled
+  end
+  return handled
 end
 
--- Attempts to conditionally stop an attack. Returns false if no conditionals are found.
 function CleveRoids.DoConditionalStopAttack(msg)
-    if not string.find(msg, "%[") then return false end
-
-    local handled = false
-    local action = function()
-        if CleveRoids.CurrentSpell.autoAttack and UnitExists("target") then
-            AttackTarget()
-            CleveRoids.CurrentSpell.autoAttack = false
-        end
+  if not string.find(msg or "", "%[") then return false end
+  local handled = false
+  local action = function()
+    if CleveRoids.CurrentSpell.autoAttack and UnitExists("target") then
+      AttackTarget() -- toggles off
+      CleveRoids.CurrentSpell.autoAttack = false
     end
-
-    for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
-        if CleveRoids.DoWithConditionals(v, nil, CleveRoids.FixEmptyTarget, false, action) then
-            handled = true
-            break
-        end
+  end
+  for _, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg or "")) do
+    if CleveRoids.DoWithConditionals(v, nil, CleveRoids.FixEmptyTarget, false, action) then
+      handled = true; break
     end
-    return handled
+  end
+  return handled
 end
 
--- Attempts to conditionally stop casting. Returns false if no conditionals are found.
+-- Conditionally stop casting (used by /stopcasting and /unqueue hooks)
 function CleveRoids.DoConditionalStopCasting(msg)
-    if not string.find(msg, "%[") then return false end
+    -- Parse the message into action + conditionals
+    local _, conditionals = CleveRoids.GetParsedMsg(msg)
 
-    local handled = false
-    local action = function()
+    -- If no conditionals at all, behave like normal /stopcasting
+    if not conditionals or not next(conditionals) then
+        if CleveRoids.Hooks and CleveRoids.Hooks.STOPCASTING_SlashCmd then
+            CleveRoids.Hooks.STOPCASTING_SlashCmd()
+        else
+            SpellStopCasting()
+        end
+        return true
+    end
+
+    -- Normalize target-style fields in the same spirit as DoWithConditionals/DoTarget
+    if conditionals["@"] then
+        conditionals.target = conditionals["@"]  -- supports [@unitid]
+        conditionals["@"] = nil
+    end
+    if type(conditionals.target) == "table" then
+        conditionals.target = conditionals.target[1]
+    end
+
+    local origTarget = conditionals.target
+    if conditionals.target == "mouseover" then
+        if UnitExists("mouseover") then
+            conditionals.target = "mouseover"
+        elseif CleveRoids.mouseoverUnit and UnitExists(CleveRoids.mouseoverUnit) then
+            conditionals.target = CleveRoids.mouseoverUnit
+        else
+            conditionals.target = "mouseover"
+        end
+    end
+
+    -- Evaluate every keyword like the rest of your conditional helpers
+    for k, _ in pairs(conditionals) do
+        if not CleveRoids.ignoreKeywords[k] then
+            local ok = CleveRoids.Keywords[k] and CleveRoids.Keywords[k](conditionals)
+            if not ok then
+                -- Conditions failed; do nothing
+                conditionals.target = origTarget
+                return false
+            end
+        end
+    end
+
+    -- All conditions passed — stop the cast/queue
+    conditionals.target = origTarget
+    if CleveRoids.Hooks and CleveRoids.Hooks.STOPCASTING_SlashCmd then
+        CleveRoids.Hooks.STOPCASTING_SlashCmd()
+    else
         SpellStopCasting()
     end
-
-    for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
-        if CleveRoids.DoWithConditionals(v, nil, nil, false, action) then
-            handled = true
-            break
-        end
-    end
-    return handled
+    return true
 end
 
--- Attempts to use or equip an item from the player's inventory by a  set of conditionals
--- Also checks if a condition is a spell so that you can mix item and spell use
--- msg: The raw message intercepted from a /use or /equip command
 function CleveRoids.DoUse(msg)
     local handled = false
 
-    local action = function(msg)
-        -- Try to interpret the message as a direct inventory slot ID first.
-        local slotId = tonumber(msg)
-        if slotId and slotId >= 1 and slotId <= 19 then -- Character slots are 1-19
-            UseInventoryItem(slotId)
-            return -- Exit after using the item by slot.
-        end
-
-        -- Original logic: if it's not a slot number, try to resolve by name.
-        local item = CleveRoids.GetItem(msg)
-
-        if item and item.inventoryID then
-            -- This is for using an already-equipped item (like a trinket).
-            -- This action does not cause an inventory change that needs a fast re-index.
-            return UseInventoryItem(item.inventoryID)
-        elseif item and item.bagID then
-            -- This will use an item from a bag. It could be a potion (use) or a weapon (equip).
-            -- We need to check if it's an equippable item before using it.
-            local isEquippable = false
-            local itemName, _, _, _, _, _, _, _, itemEquipLoc = GetItemInfo(msg)
-            if itemName and itemEquipLoc and itemEquipLoc ~= "" then
-                isEquippable = true
-            end
-
-            CleveRoids.GetNextBagSlotForUse(item, msg)
-            UseContainerItem(item.bagID, item.slot)
-
-            -- If it was an equippable item, force a cache refresh on the next inventory event.
-            if isEquippable then
-                CleveRoids.lastItemIndexTime = 0
-            end
+    local action = function(arg)
+        -- Block accidental sells while any merchant is open.
+        if MerchantFrame and MerchantFrame:IsVisible() then
             return
         end
 
-        if (MerchantFrame:IsVisible() and MerchantFrame.selectedTab == 1) then return end
+        -- Try direct inventory slot (1..19)
+        local slotId = tonumber(arg)
+        if slotId and slotId >= 1 and slotId <= 19 then
+            UseInventoryItem(slotId)
+            return
+        end
+
+        -- Resolve by name/link via cache
+        local item = CleveRoids.GetItem(arg)
+        if item and item.inventoryID then
+            -- Use equipped item (e.g., trinket)
+            UseInventoryItem(item.inventoryID)
+            return
+        elseif item and item.bagID then
+            -- Use from bag (may equip if equippable)
+            -- Prefer link/name for GetItemInfo to avoid uncached nil
+            local infoKey = item.link or item.name or arg
+            local _, _, _, _, _, _, _, _, itemEquipLoc = GetItemInfo(infoKey)
+
+            CleveRoids.GetNextBagSlotForUse(item, arg)
+            UseContainerItem(item.bagID, item.slot)
+
+            -- Force cache refresh after bag use (equips/potions/etc.)
+            CleveRoids.lastItemIndexTime = 0
+            return
+        end
     end
 
-    for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
+    for _, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg or "")) do
         v = string.gsub(v, "^%?", "")
         local subject = v
-        local _,e = string.find(v,"%]")
-        if e then subject = CleveRoids.Trim(string.sub(v,e+1)) end
+        local _, e = string.find(v, "%]")
+        if e then subject = CleveRoids.Trim(string.sub(v, e + 1)) end
 
         local wasHandled = false
-        -- If the subject is not a number, check if it's a spell.
+        -- If subject is not numeric, try as spell; else treat as item/slot
         if (not tonumber(subject)) and CleveRoids.GetSpell(subject) then
-            wasHandled = CleveRoids.DoWithConditionals(v, CleveRoids.Hooks.CAST_SlashCmd, CleveRoids.FixEmptyTarget, not CleveRoids.hasSuperwow, CastSpellByName)
+            wasHandled = CleveRoids.DoWithConditionals(
+                v,
+                CleveRoids.Hooks.CAST_SlashCmd,
+                CleveRoids.FixEmptyTarget,
+                not CleveRoids.hasSuperwow,
+                CastSpellByName
+            )
         else
-            -- Otherwise, treat it as an item (by name or slot ID).
-            wasHandled = CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action)
+            wasHandled = CleveRoids.DoWithConditionals(
+                v,
+                action,            -- hook (no conditionals case)
+                nil,               -- no targeting needed for items
+                false,
+                action             -- executor
+            )
         end
+
         if wasHandled then
             handled = true
             break
         end
     end
-    return handled -- Corrected typo from 'Handled' to 'handled'
+
+    return handled
+end
+
+local function _CR_Trim(s)
+  if s == nil then return nil end
+  s = tostring(s)
+  s = string.gsub(s, '^%s*"(.*)"%s*$', "%1")   -- strip surrounding double quotes
+  s = string.gsub(s, "^%s*'(.*)'%s*$", "%1")   -- strip surrounding single quotes
+  return CleveRoids.Trim(s)                    -- Vanilla-safe
+end
+
+local function _CR_LinkToId(link)
+  local id = link and string.match(link, "item:(%d+)") or nil
+  return id and tonumber(id) or nil
+end
+local function _CR_LinkToName(link)
+  if not link then return nil end
+  -- Cache-free: pull [Name] out of the link first.
+  local bracket = string.match(link, "%[(.+)%]")
+  if bracket and bracket ~= "" then return bracket end
+  -- Fallback: game cache (may be nil if uncached)
+  return GetItemInfo(link)
+end
+local function _CR_QueryFromMsg(msg)
+  local q = _CR_Trim(msg or "")
+  if q == "" then return nil end
+  local asId = tonumber(q)
+  return asId and { id = asId } or { name = string.lower(q) }
+end
+local function _CR_Matches(link, q)
+  if not link or not q then return false end
+  if q.id then return _CR_LinkToId(link) == q.id end
+  local nm = _CR_LinkToName(link)
+  return nm and string.lower(nm) == q.name
 end
 
 function CleveRoids.EquipBagItem(msg, offhand)
-    -- First, get item data from the addon's own reliable cache.
-    local item = CleveRoids.GetItem(msg)
-    if not item or not item.name then
-        -- If the addon can't find the item at all, do nothing.
-        return false
+  local q = _CR_QueryFromMsg(msg)
+  if not q then return false end
+  local wantSlot = offhand and 17 or 16
+
+  -- already in correct slot?
+  local cur = GetInventoryItemLink("player", wantSlot)
+  if _CR_Matches(cur, q) then return true end
+
+  -- equipped elsewhere? swap
+  for inv = 1, 19 do
+    local link = GetInventoryItemLink("player", inv)
+    if _CR_Matches(link, q) then
+      PickupInventoryItem(inv)
+      EquipCursorItem(wantSlot)
+      ClearCursor()
+      CleveRoids.lastItemIndexTime = 0
+      return true
     end
+  end
 
-    local invslot = offhand and 17 or 16 -- 17 is off-hand, 16 is main-hand
-
-    -- Now, check the currently equipped item using live game data.
-    local currentItemLink = GetInventoryItemLink("player", invslot)
-    if currentItemLink then
-        local currentItemName = GetItemInfo(currentItemLink)
-        if currentItemName and currentItemName == item.name then
-            -- The correct item is already in the correct slot. Stop here.
-            return true
+  -- in bags? equip
+  for bag = 0, 4 do
+    local slots = GetContainerNumSlots(bag)
+    if slots then
+      for slot = 1, slots do
+        local link = GetContainerItemLink(bag, slot)
+        if _CR_Matches(link, q) then
+          PickupContainerItem(bag, slot)
+          EquipCursorItem(wantSlot)
+          ClearCursor()
+          CleveRoids.lastItemIndexTime = 0
+          return true
         end
+      end
     end
-
-    -- If the check above fails, proceed with the original logic to equip the item.
-    -- We can reuse the 'item' object we already found.
-    if not item.bagID and not item.inventoryID then
-        return false
-    end
-
-    if item.bagID then
-        CleveRoids.GetNextBagSlotForUse(item, msg)
-        PickupContainerItem(item.bagID, item.slot)
-    else
-        PickupInventoryItem(item.inventoryID)
-    end
-
-    EquipCursorItem(invslot)
-    ClearCursor()
-
-    CleveRoids.lastItemIndexTime = 0
-
-    return true
+  end
+  return false
 end
 
--- TODO: Refactor all these DoWithConditionals sections
 function CleveRoids.DoEquipMainhand(msg)
-    local handled = false
+  local handled = false
+  local action = function(subject) return CleveRoids.EquipBagItem(subject, false) end
+  for _, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg or "")) do
+    v = string.gsub(v, "^%?", "")
+    if CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action) then
 
-    local action = function(msg)
-        return CleveRoids.EquipBagItem(msg, false)
+      handled = true; break
     end
-
-    for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
-        v = string.gsub(v, "^%?", "")
-
-        if CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action) then
-            handled = true
-            break
-        end
-    end
-    return handled
+  end
+  return handled
 end
 
 function CleveRoids.DoEquipOffhand(msg)
-    local handled = false
+  local handled = false
+  local action = function(subject) return CleveRoids.EquipBagItem(subject, true) end
+  for _, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg or "")) do
+    v = string.gsub(v, "^%?", "")
+    if CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action) then
 
-    local action = function(msg)
-        return CleveRoids.EquipBagItem(msg, true)
+      handled = true; break
     end
-
-    for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
-        v = string.gsub(v, "^%?", "")
-
-        if CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, false, action) then
-            handled = true
-            break
-        end
-    end
-    return handled
+  end
+  return handled
 end
 
 function CleveRoids.DoUnshift(msg)
@@ -1296,16 +1376,19 @@ function CleveRoids.DoRetarget()
     end
 end
 
--- Attempts to stop macro
- function CleveRoids.DoStopMacro(msg)
-    local handled = false
-    for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(CleveRoids.Trim(msg))) do
-        if CleveRoids.DoWithConditionals(msg, nil, nil, not CleveRoids.hasSuperwow, "STOPMACRO") then
-            handled = true -- we parsed at least one command
-            break
-        end
+function CleveRoids.DoStopMacro(msg)
+  msg = CleveRoids.Trim(msg or "")
+  if not string.find(msg, "%[") then
+    CleveRoids.stopmacro = true
+    return true
+  end
+  local handled = false
+  for _, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
+    if CleveRoids.DoWithConditionals(v, nil, nil, false, "STOPMACRO") then
+      handled = true; break
     end
-    return handled
+  end
+  return handled
 end
 
 function CleveRoids.DoCastSequence(sequence)
@@ -1976,12 +2059,6 @@ function SendChatMessage(msg, ...)
         return
     end
     CleveRoids.Hooks.SendChatMessage(msg, unpack(arg))
-end
-
-CleveRoids.RegisterActionEventHandler = function(fn)
-    if type(fn) == "function" then
-        table.insert(CleveRoids.actionEventHandlers, fn)
-    end
 end
 
 CleveRoids.RegisterMouseOverResolver = function(fn)
