@@ -343,7 +343,7 @@ function CleveRoids.FixEmptyTarget(conditionals)
             conditionals.target = "target"
         else
             -- Only honor Auto Self Cast when the macro didn't ask for help/harm targeting
-            if GetCVar("autoSelfCast") == "1" and not conditionals.help and not conditionals.harm then
+            if GetCVar("autoSelfCast") == "1" and not conditionals.help then
                 conditionals.target = "player"
             end
         end
