@@ -338,14 +338,19 @@ end
 
 function CleveRoids.FixEmptyTarget(conditionals)
     if not conditionals.target then
+        -- Always prefer the actual target if it exists
         if UnitExists("target") then
             conditionals.target = "target"
-        elseif GetCVar("autoSelfCast") == "1" and not conditionals.target == "help" then
-            conditionals.target = "player"
+        else
+            -- Only honor Auto Self Cast when the macro didn't ask for help/harm targeting
+            if GetCVar("autoSelfCast") == "1" and not conditionals.help and not conditionals.harm then
+                conditionals.target = "player"
+            end
         end
     end
     return false
 end
+
 
 -- Fixes the conditionals' target by targeting the target with the given name
 -- conditionals: The conditionals containing the current target
