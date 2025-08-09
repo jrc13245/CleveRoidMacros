@@ -23,16 +23,11 @@ function Extension.RegisterPlayerScripts()
 
     pfUI.uf.player:SetScript("OnEnter", function()
         CleveRoids.mouseoverUnit = "player"
-        CleveRoids.QueueActionUpdate()
-
         if onEnterFunc then onEnterFunc(this) end
     end)
 
     pfUI.uf.player:SetScript("OnLeave", function()
-        if CleveRoids.mouseoverUnit == "player" then
-            CleveRoids.mouseoverUnit = nil
-            CleveRoids.QueueActionUpdate()
-        end
+        if CleveRoids.mouseoverUnit == "player" then CleveRoids.mouseoverUnit = nil end
         if onLeaveFunc then onLeaveFunc(this) end
     end)
 end
@@ -44,15 +39,11 @@ function Extension.RegisterTargetScripts()
 
     pfUI.uf.target:SetScript("OnEnter", function()
         CleveRoids.mouseoverUnit = "target"
-        CleveRoids.QueueActionUpdate()
         if onEnterFunc then onEnterFunc(this) end
     end)
 
     pfUI.uf.target:SetScript("OnLeave", function()
-        if CleveRoids.mouseoverUnit == "target" then
-            CleveRoids.mouseoverUnit = nil
-            CleveRoids.QueueActionUpdate()
-        end
+        if CleveRoids.mouseoverUnit == "target" then CleveRoids.mouseoverUnit = nil end
         if onLeaveFunc then onLeaveFunc(this) end
     end)
 end
@@ -64,15 +55,11 @@ function Extension.RegisterTargetTargetScripts()
 
     pfUI.uf.targettarget:SetScript("OnEnter", function()
         CleveRoids.mouseoverUnit = "targettarget"
-        CleveRoids.QueueActionUpdate()
         if onEnterFunc then onEnterFunc(this) end
     end)
 
     pfUI.uf.targettarget:SetScript("OnLeave", function()
-        if CleveRoids.mouseoverUnit == "targettarget" then
-            CleveRoids.mouseoverUnit = nil
-            CleveRoids.QueueActionUpdate()
-        end
+        if CleveRoids.mouseoverUnit == "targettarget" then CleveRoids.mouseoverUnit = nil end
         if onLeaveFunc then onLeaveFunc(this) end
     end)
 end
@@ -90,7 +77,6 @@ function Extension.RegisterPartyScripts()
             frame:SetScript("OnEnter", function()
                 if this.unit then
                     CleveRoids.mouseoverUnit = this.unit
-                    CleveRoids.QueueActionUpdate()
                 end
                 if onEnterFunc then onEnterFunc(this) end
             end)
@@ -98,7 +84,6 @@ function Extension.RegisterPartyScripts()
             frame:SetScript("OnLeave", function()
                 if this.unit and CleveRoids.mouseoverUnit == this.unit then
                     CleveRoids.mouseoverUnit = nil
-                    CleveRoids.QueueActionUpdate()
                 end
                 if onLeaveFunc then onLeaveFunc(this) end
             end)
@@ -120,7 +105,6 @@ function Extension.RegisterRaidScripts()
                 -- Check if the frame has a valid unit assigned before setting
                 if this.unit and this.unit ~= "" and UnitExists(this.unit) then
                     CleveRoids.mouseoverUnit = this.unit
-                    CleveRoids.QueueActionUpdate()
                 end
                 if onEnterFunc then onEnterFunc(this) end
             end)
@@ -128,7 +112,6 @@ function Extension.RegisterRaidScripts()
             frame:SetScript("OnLeave", function()
                 if this.unit and CleveRoids.mouseoverUnit == this.unit then
                     CleveRoids.mouseoverUnit = nil
-                    CleveRoids.QueueActionUpdate()
                 end
                 if onLeaveFunc then onLeaveFunc(this) end
             end)
@@ -142,13 +125,11 @@ local function SafeHookFrameMouseover(frame, unit, onenter, onleave)
 
     frame:SetScript("OnEnter", function()
         CleveRoids.mouseoverUnit = unit
-        CleveRoids.QueueActionUpdate()
         if onenter then onenter() end
     end)
     frame:SetScript("OnLeave", function()
         if CleveRoids.mouseoverUnit == unit then
             CleveRoids.mouseoverUnit = nil
-            CleveRoids.QueueActionUpdate()
         end
         if onleave then onleave() end
     end)
