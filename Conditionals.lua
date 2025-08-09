@@ -4,51 +4,6 @@
 ]]
 local _G = _G or getfenv(0)
 local CleveRoids = _G.CleveRoids or {}
-local function CR_LinkName(link)
-    return link and string.match(link, "%[(.+)%]") or nil
-end
-
-local function _CR_Trim(s)
-  if s == nil then return nil end
-  s = tostring(s)
-  s = string.gsub(s, '^%s*"(.*)"%s*$', "%1")   -- strip surrounding double quotes
-  s = string.gsub(s, "^%s*'(.*)'%s*$", "%1")   -- strip surrounding single quotes
-  return CleveRoids.Trim(s)                    -- Vanilla-safe
-end
-
-
-local function _CR_LinkToId(link)
-  if not link then return nil end
-  local id = string.match(link, "item:(%d+)")
-  return id and tonumber(id) or nil
-end
-
-local function _CR_LinkToName(link)
-  if not link then return nil end
-  -- Cache-free: pull [Name] out of the link first.
-  local bracket = string.match(link, "%[(.+)%]")
-  if bracket and bracket ~= "" then return bracket end
-  -- Fallback: game cache (may be nil if uncached)
-  return GetItemInfo(link)
-end
-
-local function _CR_QueryFromMsg(msg)
-  local q = _CR_Trim(msg or "")
-  if q == "" then return nil end
-  local asId = tonumber(q)
-  if asId then return { id = asId } end
-  return { name = string.lower(q) }
-end
-
-local function _CR_Matches(link, q)
-  if not link or not q then return false end
-  if q.id then
-    return _CR_LinkToId(link) == q.id
-  else
-    local nm = _CR_LinkToName(link)
-    return nm and string.lower(nm) == q.name
-  end
-end
 
 --This table maps stat keys to the functions that retrieve their values.
 local stat_checks = {
@@ -197,20 +152,39 @@ function CleveRoids.CancelAura(auraName)
 end
 
 function CleveRoids.HasGearEquipped(gearId)
-  if not gearId then return false end
-  local wantId = tonumber(gearId)
-  local wantName = (not wantId) and string.lower(tostring(gearId)) or nil
-  for i = 1, 19 do
-    local link = GetInventoryItemLink("player", i)
-    if link then
-      local id = _CR_LinkToId(link)
-      local nm = _CR_LinkToName(link)
-      if (wantId and id == wantId) or (wantName and nm and string.lower(nm) == wantName) then
-        return true
-      end
+    if not gearId then return false end
+
+    -- normalize the sought value once
+    local wantId = tonumber(gearId)
+    local wantName = (type(gearId) == "string") and string.lower(gearId) or nil
+
+    for slot = 1, 19 do
+        local link = GetInventoryItemLink("player", slot)
+        if link then
+            -- Pull itemID and the [Name] out of the link. Works without cache.
+            -- Example link: |cff1eff00|Hitem:19022:0:0:0|h[Nat Pagle's Extreme Angler FC-5000]|h|r
+            local id = string.match(link, "item:(%d+)")
+            local nameInBrackets = string.match(link, "%[(.+)%]")
+
+            if wantId and id and tonumber(id) == wantId then
+                return true
+            end
+
+            if wantName and nameInBrackets and string.lower(nameInBrackets) == wantName then
+                return true
+            end
+
+            -- Fallback: if we didn’t get a name from the link for some reason, try GetItemInfo
+            if wantName and not nameInBrackets then
+                local itemName = GetItemInfo(link) -- may be nil if not cached
+                if itemName and string.lower(itemName) == wantName then
+                    return true
+                end
+            end
+        end
     end
-  end
-  return false
+
+    return false
 end
 
 
