@@ -327,7 +327,7 @@ function CleveRoids.FixEmptyTarget(conditionals)
     if not conditionals.target then
         if UnitExists("target") then
             conditionals.target = "target"
-        elseif GetCVar("autoSelfCast") == "1" and (conditionals.help or false) then
+        elseif GetCVar("autoSelfCast") == "1" and not conditionals.target == "help" then
             conditionals.target = "player"
         end
     end
@@ -793,16 +793,6 @@ end
 function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBeforeAction, action)
     local msg, conditionals = CleveRoids.GetParsedMsg(msg)
 
-    if conditionals then
-        if conditionals["@"] then
-            conditionals.target = conditionals["@"] -- [@unitid]
-            conditionals["@"] = nil
-        end
-        if type(conditionals.target) == "table" then
-            conditionals.target = conditionals.target[1]
-        end
-    end
-
     -- No conditionals. Just exit.
     if not conditionals then
         if not msg then -- if not even an empty string
@@ -949,33 +939,16 @@ function CleveRoids.DoCast(msg)
     return handled
 end
 
+-- Target using GUIDs and the correct :Click() method for targeting.
 function CleveRoids.DoTarget(msg)
     local action, conditionals = CleveRoids.GetParsedMsg(msg)
 
-    -- Early out: fallback to classic /target if not a conditional macro
     if action ~= "" or not next(conditionals) then
         CleveRoids.Hooks.TARGET_SlashCmd(msg)
         return true
     end
 
-    -- 1. Handle direct unitIDs (player, mouseover, focus, party1, etc)
-    local unitid = conditionals.target or action
-    if unitid and (
-        unitid == "player" or unitid == "target" or unitid == "focus" or
-        unitid == "mouseover" or string.match(unitid, "^party%d+$") or
-        string.match(unitid, "^raid%d+$") or unitid == "targettarget" or
-        unitid == "pettarget"
-    ) then
-        if unitid == "mouseover" then
-            unitid = CleveRoids.mouseoverUnit or "mouseover"
-        end
-        if UnitExists(unitid) and not UnitIsDeadOrGhost(unitid) then
-            TargetUnit(unitid)
-            return true
-        end
-    end
-
-    -- 2. Helper: Validate GUID
+    -- Helper function validates a unit via its GUID.
     local function IsGuidValid(guid, conds)
         if not guid or not UnitExists(guid) or UnitIsDeadOrGhost(guid) then
             return false
@@ -995,13 +968,14 @@ function CleveRoids.DoTarget(msg)
         return allConditionsMet
     end
 
-    -- 3. If your current target is already valid, do nothing.
+    -- 1. If your current target is already valid, do nothing.
     local _, originalTargetGUID = UnitExists("target")
     if originalTargetGUID and IsGuidValid(originalTargetGUID, conditionals) then
         return true
     end
 
-    -- 4. Build a list of candidates to check.
+    -- 2. Build a list of candidates to check.
+    --    This table will store the GUID and the object needed to target it.
     local candidates = {}
     local children = { WorldFrame:GetChildren() }
 
@@ -1024,22 +998,24 @@ function CleveRoids.DoTarget(msg)
         end
     end
 
-    -- 5. Find the first valid candidate and target it.
+    -- 3. Find the first valid candidate and target it.
     for _, candidate in ipairs(candidates) do
         if IsGuidValid(candidate.guid, conditionals) then
+            -- Found a winner. Target it using the appropriate method.
             if candidate.unitId then
+                -- It's a party/raid member, target by its unit token.
                 TargetUnit(candidate.unitId)
             elseif candidate.frame then
+                -- It's a world mob, target by simulating a click on its nameplate frame.
                 candidate.frame:Click()
             end
             return true
         end
     end
 
-    -- 6. If no valid new target was found, do nothing.
+    -- 4. If no valid new target was found, do nothing, preserving your original target.
     return true
 end
-
 
 -- Attempts to attack a unit by a set of conditionals
 -- msg: The raw message intercepted from a /petattack command

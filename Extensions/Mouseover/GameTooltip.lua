@@ -7,20 +7,27 @@ local CleveRoids = _G.CleveRoids or {}
 local Extension = CleveRoids.RegisterExtension("GameTooltipMouseover")
 
 function Extension.SetUnit(_, unit)
--- Just store the unit, don't change mouseover state
-CleveRoids.mouseoverUnit = unit
+	-- When GameTooltip is shown for a unit, set the game's mouseover
+	if CleveRoids.hasSuperwow and SetMouseoverUnit then
+		SetMouseoverUnit(unit)
+	else 
+		CleveRoids.mouseoverUnit = unit
+	end
 end
 
 function Extension.OnClose()
--- Clear stored mouseover when tooltip closes
-CleveRoids.mouseoverUnit = nil
-end
+	-- When GameTooltip is hidden, clear the game's mouseover
+	if CleveRoids.hasSuperwow and SetMouseoverUnit then
+		SetMouseoverUnit()
+	else 
+		CleveRoids.mouseoverUnit = unit
+	end
+end	
 
 function Extension.OnLoad()
-Extension.HookMethod(GameTooltip, "SetUnit", "SetUnit")
-Extension.HookMethod(GameTooltip, "Hide", "OnClose")
-Extension.HookMethod(GameTooltip, "FadeOut", "OnClose")
+	Extension.HookMethod(_G["GameTooltip"], "SetUnit", "SetUnit")
+	Extension.HookMethod(_G["GameTooltip"], "Hide", "OnClose")
+	Extension.HookMethod(_G["GameTooltip"], "FadeOut", "OnClose")
 end
-
 
 _G["CleveRoids"] = CleveRoids
