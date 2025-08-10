@@ -2075,20 +2075,30 @@ do
     ---- END of pfUI Focus Fix ----
 
 function CleveRoids.GetDebuffBaseDurationBySpellID(spellId)
-  -- Prefer pfUI if available
-  if pfUI and pfUI.api and pfUI.api.libdebuff then
-    local lib = pfUI.api.libdebuff
-    local name = SpellInfo and SpellInfo(spellId)
-    if name and lib and lib.Durations then
-      name = string.gsub(name, "%s*%(%s*Rank%s+%d+%s*%)", "")
-      return lib.Durations[name]
-    end
-  end
+    if not spellId then return nil end
 
-  -- Fallback to our shipped lib (only loaded when pfUI is absent)
-  if CleveRoids.api and CleveRoids.api.libdebuff then
-    return CleveRoids.api.libdebuff:GetDurationBySpellID(spellId)
-  end
+    -- 1. Check our new, comprehensive database first.
+    if CleveRoids.DebuffDB and CleveRoids.DebuffDB[spellId] then
+        return CleveRoids.DebuffDB[spellId]
+    end
+
+    -- 2. As a fallback, check pfUI's library if available.
+    local name = SpellInfo and SpellInfo(spellId)
+    if name then
+        local unranked_name = string.gsub(name, "%s*%(%s*Rank%s+%d+%s*%)", "")
+        if pfUI and pfUI.api and pfUI.api.libdebuff and pfUI.api.libdebuff.Durations and pfUI.api.libdebuff.Durations[unranked_name] then
+            return pfUI.api.libdebuff.Durations[unranked_name]
+        end
+    end
+
+    -- 3. As a final fallback, check the "learning" library for any dynamically learned durations.
+    if CleveRoids.api and CleveRoids.api.libdebuff then
+        local learned_dur = CleveRoids.api.libdebuff:GetDurationBySpellID(spellId)
+        if learned_dur then return learned_dur end
+    end
+
+    -- If the duration is not found in any database, return nil.
+    return nil
 end
 
 local Ext = CleveRoids.RegisterExtension("AuraTimers")

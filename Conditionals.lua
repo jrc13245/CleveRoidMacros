@@ -570,115 +570,110 @@ function CleveRoids.ValidateUnitBuff(unit, args)
     return CleveRoids.ValidateAura(unit, args, true)
 end
 
+-- In Conditionals.lua, replace the entire function with this one.
+
 function CleveRoids.ValidateUnitDebuff(unit, args)
     if not args or not UnitExists(unit) then return false end
+    if type(args) ~= "table" then args = {name = args} end
 
-    if type(args) ~= "table" then
-        args = {name = args}
-    end
+    local found_aura = false
+    local remaining_time = 0
+    local has_timer_data = false
+    local stacks = 0
+    local spellID = nil
 
-    local found = false
-    local texture, stacks, spellID, remaining
-    local i
-
-    -- Step 1: Search DEBUFFS first
-    i = (unit == "player") and 0 or 1
-    while true do
-        if unit == "player" then
-            texture, stacks, spellID, remaining = CleveRoids.GetPlayerAura(i, false)
-        else
-            if CleveRoids.hasSuperwow then
-                local _, s, _, sid, timeLeft = UnitDebuff(unit, i)
-                texture, stacks, spellID, remaining = _, s, sid, timeLeft
-            else
-                texture, stacks, _, spellID = UnitDebuff(unit, i)
-                remaining = nil
-            end
-        end
-
-        if not texture then break end
-        if (CleveRoids.hasSuperwow and args.name == StripRank(SpellInfo(spellID))) or (not CleveRoids.hasSuperwow and texture == CleveRoids.auraTextures[args.name]) then
-            found = true
-            break
-        end
-        i = i + 1
-    end
-
-    -- Step 2: If not found, search BUFFS
-    if not found then
-        i = (unit == "player") and 0 or 1
-        while true do
-            if unit == "player" then
-                texture, stacks, spellID, remaining = CleveRoids.GetPlayerAura(i, true)
-            else
-                if CleveRoids.hasSuperwow then
-                    local _, s, _, sid, timeLeft = UnitBuff(unit, i)
-                    texture, stacks, spellID, remaining = _, s, sid, timeLeft
+    -- A single, robust function to search for an aura on the unit
+    local function find_aura()
+        local function search(is_debuff)
+            local i = (unit == "player") and 0 or 1
+            while true do
+                local tex, s, sid, rem
+                if unit == "player" then
+                    tex, s, sid, rem = CleveRoids.GetPlayerAura(i, not is_debuff)
                 else
-                    texture, stacks, spellID = UnitBuff(unit, i)
-                    remaining = nil
+                    if is_debuff then
+                        tex, s, _, sid, rem = UnitDebuff(unit, i)
+                    else
+                        tex, s, sid, rem = UnitBuff(unit, i)
+                    end
                 end
-            end
 
-            if not texture then break end
-            if (CleveRoids.hasSuperwow and args.name == StripRank(SpellInfo(spellID))) or (not CleveRoids.hasSuperwow and texture == CleveRoids.auraTextures[args.name]) then
-                found = true
-                break
-            end
-            i = i + 1
-        end
-    end
+                if not tex then break end
 
-    -- If aura found and we have a spellID, derive remaining from our expiry stamp.
-    -- NOTE: This is only meaningful on SuperWoW, since timers are populated from UNIT_CASTEVENT.
-    if found and spellID and CleveRoids.hasSuperwow then
-        local unitGUID = (UnitGUID and UnitGUID(unit)) or select(2, UnitExists(unit))
-        if unitGUID then
-            local t = CleveRoids.debuffTimers and CleveRoids.debuffTimers[unitGUID]
-            if t then
-                local expiresAt = t[spellID]
-                if expiresAt then
-                    local r = expiresAt - GetTime()
-                    remaining = (r > 0) and r or 0
+                -- Check for a name match using the spell ID from the aura
+                if CleveRoids.hasSuperwow and sid and args.name == StripRank(SpellInfo(sid)) then
+                    return true, s, sid, rem
                 end
+                i = i + 1
             end
+            return false
         end
+
+        -- Search debuffs first, then buffs
+        local was_found, s, sid, rem = search(true)
+        if not was_found then
+            was_found, s, sid, rem = search(false)
+        end
+        return was_found, s, sid, rem
     end
 
-    -- Step 3: Correctly perform conditional validation
-    local ops = CleveRoids.operators
+    -- Step 1: Find the aura and get its initial data from the API
+    found_aura, stacks, spellID, remaining_time = find_aura()
 
-    -- Case A: No numeric/stack condition, just check for existence.
-    if not args.amount and not args.operator and not args.checkStacks then
-        return found
-    end
-
-    -- Case B: Numeric/stack condition exists.
-    if args.amount and ops[args.operator] then
-        if found then
-            if args.checkStacks then
-                return CleveRoids.comparators[args.operator](stacks or 0, args.amount)
-            elseif unit == "player" or remaining ~= nil then
-                -- Time comparison if we have 'remaining' (player or provided by SuperWoW timer lookup)
-                return CleveRoids.comparators[args.operator](remaining or 0, args.amount)
-            else
-                -- No time data for non-player & no SuperWoW timer -> fail time-based check
-                return false
-            end
+    -- Step 2: If the aura was found, determine if we have a valid timer for it
+    if found_aura then
+        -- Trust the API's remaining time if it's valid (> 0)
+        if remaining_time and remaining_time > 0 then
+            has_timer_data = true
         else
-            if args.checkStacks then
-                return CleveRoids.comparators[args.operator](0, args.amount)
-            elseif unit == "player" or remaining ~= nil then
-                return CleveRoids.comparators[args.operator](0, args.amount)
-            else
-                return false
+            -- If the API timer is missing or zero, check our addon's internal timer database
+            if spellID and CleveRoids.debuffTimers then
+                local _, unitGUID = UnitExists(unit)
+                if unitGUID then
+                    unitGUID = string.upper(string.gsub(unitGUID, "^0x", ""))
+                    local target_timers = CleveRoids.debuffTimers[unitGUID]
+                    if target_timers and target_timers[spellID] then
+                        local expiry_time = target_timers[spellID]
+                        if expiry_time > GetTime() then
+                            remaining_time = expiry_time - GetTime()
+                            has_timer_data = true
+                        else
+                            remaining_time = 0 -- Timer has expired
+                            has_timer_data = true
+                        end
+                    end
+                end
             end
         end
     end
 
-    return false -- Fallback
-end
+    -- Step 3: Perform the final validation based on our findings
+    if not args.amount or not args.operator then -- Simple existence check, e.g., [debuff:Moonfire]
+        return found_aura and has_timer_data and (remaining_time > 0)
+    end
 
+    if CleveRoids.comparators[args.operator] then
+        if args.checkStacks then
+            return CleveRoids.comparators[args.operator](stacks or 0, args.amount)
+        else
+            -- This is a time-based check
+            if found_aura then
+                if has_timer_data then
+                    -- Aura is present AND we know the time. Perform the real comparison.
+                    return CleveRoids.comparators[args.operator](remaining_time, args.amount)
+                else
+                    -- Aura is present BUT we don't know the time. Fail safely.
+                    return false
+                end
+            else
+                -- Aura is not present. Its remaining duration is 0.
+                return CleveRoids.comparators[args.operator](0, args.amount)
+            end
+        end
+    end
+
+    return false
+end
 
 function CleveRoids.ValidatePlayerBuff(args)
     return CleveRoids.ValidateAura("player", args, true)

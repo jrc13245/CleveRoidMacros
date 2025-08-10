@@ -9,6 +9,9 @@
 ## SavedVariables: CleveRoidMacros
 
 Localization.lua
+
+Libs\LibDebuffDB.lua
+
 Init.lua
 
 Libs\LibDebuff.lua
