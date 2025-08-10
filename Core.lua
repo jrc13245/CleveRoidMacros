@@ -1107,13 +1107,14 @@ function CleveRoids.DoConditionalStopCasting(msg)
     end
 
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
-        if CleveRoids.DoWithConditionals(v, nil, nil, false, action) then
+        if CleveRoids.DoWithConditionals(v, nil, CleveRoids.FixEmptyTarget, false, action) then
             handled = true
             break
         end
     end
     return handled
 end
+
 
 -- Attempts to use or equip an item from the player's inventory by a  set of conditionals
 -- Also checks if a condition is a spell so that you can mix item and spell use
