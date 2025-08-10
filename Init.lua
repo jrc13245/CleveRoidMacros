@@ -24,7 +24,7 @@ CleveRoids.Cooldowns = {}
 CleveRoids.Macros    = {}
 CleveRoids.Actions   = {}
 CleveRoids.Sequences = {}
-
+CleveRoids.debuffTimers = CleveRoids.debuffTimers or {}
 CleveRoids.lastUpdate = 0
 CleveRoids.lastGetItem = nil
 CleveRoids.currentSequence = nil

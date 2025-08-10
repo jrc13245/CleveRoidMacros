@@ -500,6 +500,12 @@ function CleveRoids.GetPlayerAura(index, isbuff)
     return GetPlayerBuffTexture(bid), GetPlayerBuffApplications(bid), spellID, GetPlayerBuffTimeLeft(bid)
 end
 
+-- Helper: strip "(Rank N)" suffix
+local function StripRank(name)
+    return name and string.gsub(name, "%s*%(%s*Rank%s+%d+%s*%)", "")
+end
+
+
 function CleveRoids.ValidateAura(unit, args, isbuff)
     if not args or not UnitExists(unit) then return false end
 
@@ -524,7 +530,7 @@ function CleveRoids.ValidateAura(unit, args, isbuff)
         end
 
         if (CleveRoids.hasSuperwow and not spellID) or not texture then break end
-        if (CleveRoids.hasSuperwow and args.name == SpellInfo(spellID))
+        if (CleveRoids.hasSuperwow and args.name == StripRank(SpellInfo(spellID)))
             or (not CleveRoids.hasSuperwow and texture == CleveRoids.auraTextures[args.name])
         then
             found = true
@@ -567,11 +573,17 @@ function CleveRoids.ValidateUnitDebuff(unit, args)
         if unit == "player" then
             texture, stacks, spellID, remaining = CleveRoids.GetPlayerAura(i, false)
         else
-            texture, stacks, _, spellID = UnitDebuff(unit, i)
+            if CleveRoids.hasSuperwow then
+                local _, s, _, sid, timeLeft = UnitDebuff(unit, i)
+                texture, stacks, spellID, remaining = _, s, sid, timeLeft
+            else
+                texture, stacks, _, spellID = UnitDebuff(unit, i)
+                remaining = nil
+            end
         end
 
         if not texture then break end
-        if (CleveRoids.hasSuperwow and args.name == SpellInfo(spellID)) or (not CleveRoids.hasSuperwow and texture == CleveRoids.auraTextures[args.name]) then
+        if (CleveRoids.hasSuperwow and args.name == StripRank(SpellInfo(spellID))) or (not CleveRoids.hasSuperwow and texture == CleveRoids.auraTextures[args.name]) then
             found = true
             break
         end
@@ -585,15 +597,37 @@ function CleveRoids.ValidateUnitDebuff(unit, args)
             if unit == "player" then
                 texture, stacks, spellID, remaining = CleveRoids.GetPlayerAura(i, true)
             else
-                texture, stacks, spellID = UnitBuff(unit, i)
+                if CleveRoids.hasSuperwow then
+                    local _, s, _, sid, timeLeft = UnitBuff(unit, i)
+                    texture, stacks, spellID, remaining = _, s, sid, timeLeft
+                else
+                    texture, stacks, spellID = UnitBuff(unit, i)
+                    remaining = nil
+                end
             end
 
             if not texture then break end
-            if (CleveRoids.hasSuperwow and args.name == SpellInfo(spellID)) or (not CleveRoids.hasSuperwow and texture == CleveRoids.auraTextures[args.name]) then
+            if (CleveRoids.hasSuperwow and args.name == StripRank(SpellInfo(spellID))) or (not CleveRoids.hasSuperwow and texture == CleveRoids.auraTextures[args.name]) then
                 found = true
                 break
             end
             i = i + 1
+        end
+    end
+
+    -- If aura found and we have a spellID, derive remaining from our expiry stamp.
+    -- NOTE: This is only meaningful on SuperWoW, since timers are populated from UNIT_CASTEVENT.
+    if found and spellID and CleveRoids.hasSuperwow then
+        local unitGUID = (UnitGUID and UnitGUID(unit)) or select(2, UnitExists(unit))
+        if unitGUID then
+            local t = CleveRoids.debuffTimers and CleveRoids.debuffTimers[unitGUID]
+            if t then
+                local expiresAt = t[spellID]
+                if expiresAt then
+                    local r = expiresAt - GetTime()
+                    remaining = (r > 0) and r or 0
+                end
+            end
         end
     end
 
@@ -607,25 +641,20 @@ function CleveRoids.ValidateUnitDebuff(unit, args)
 
     -- Case B: Numeric/stack condition exists.
     if args.amount and ops[args.operator] then
-        -- If aura was found, perform the comparison on its stacks/time.
         if found then
             if args.checkStacks then
                 return CleveRoids.comparators[args.operator](stacks or 0, args.amount)
-            elseif unit == "player" then -- Time check only for player
+            elseif unit == "player" or remaining ~= nil then
+                -- Time comparison if we have 'remaining' (player or provided by SuperWoW timer lookup)
                 return CleveRoids.comparators[args.operator](remaining or 0, args.amount)
             else
-                -- This case is for a numeric check on a non-player unit that isn't a stack check.
-                -- Debuff checks on NPCs/other players are typically for existence or stacks.
-                -- Return true if found, as there's no other metric to compare.
-                return true
+                -- No time data for non-player & no SuperWoW timer -> fail time-based check
+                return false
             end
-        -- If aura was NOT found, compare against default values.
         else
             if args.checkStacks then
-                -- Compare stacks (0) against the amount. e.g., (0 < 5) is true.
                 return CleveRoids.comparators[args.operator](0, args.amount)
-            elseif unit == "player" then
-                -- Compare time (0) against the amount.
+            elseif unit == "player" or remaining ~= nil then
                 return CleveRoids.comparators[args.operator](0, args.amount)
             else
                 return false
@@ -635,6 +664,7 @@ function CleveRoids.ValidateUnitDebuff(unit, args)
 
     return false -- Fallback
 end
+
 
 function CleveRoids.ValidatePlayerBuff(args)
     return CleveRoids.ValidateAura("player", args, true)

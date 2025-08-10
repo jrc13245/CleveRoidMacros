@@ -2074,6 +2074,75 @@ do
     end
     ---- END of pfUI Focus Fix ----
 
+function CleveRoids.GetDebuffBaseDurationBySpellID(spellId)
+  -- Prefer pfUI if available
+  if pfUI and pfUI.api and pfUI.api.libdebuff then
+    local lib = pfUI.api.libdebuff
+    local name = SpellInfo and SpellInfo(spellId)
+    if name and lib and lib.Durations then
+      name = string.gsub(name, "%s*%(%s*Rank%s+%d+%s*%)", "")
+      return lib.Durations[name]
+    end
+  end
+
+  -- Fallback to our shipped lib (only loaded when pfUI is absent)
+  if CleveRoids.api and CleveRoids.api.libdebuff then
+    return CleveRoids.api.libdebuff:GetDurationBySpellID(spellId)
+  end
+end
+
+local Ext = CleveRoids.RegisterExtension("AuraTimers")
+
+local function norm(g)
+  if not g then return nil end
+  g = string.gsub(g, "^0x", "")
+  return string.upper(g)
+end
+
+-- Events
+Ext.RegisterEvent("UNIT_CASTEVENT", "OnCastEvent")
+Ext.RegisterEvent("RAW_COMBATLOG",  "OnRawLog")
+
+-- args: casterGUID, targetGUID, eventType, spellId, castDuration
+function Ext.OnCastEvent()
+  local casterGUID, targetGUID, evType, spellId = arg1, arg2, arg3, arg4
+  if evType ~= "CAST" or not targetGUID or not spellId then return end
+
+  local dur = CleveRoids.GetDebuffBaseDurationBySpellID(spellId)
+  if not dur or dur <= 0 then return end
+
+  targetGUID = norm(targetGUID)
+  if not targetGUID then return end
+
+  CleveRoids.debuffTimers[targetGUID] = CleveRoids.debuffTimers[targetGUID] or {}
+  CleveRoids.debuffTimers[targetGUID][spellId] = GetTime() + dur
+end
+
+function Ext.OnRawLog()
+  local raw = arg2
+  if not raw or not string.find(raw, "fades from") then return end
+
+  local spellName = string.match(raw, "^(.-) fades from ")
+  local targetGUID = norm(string.match(raw, "GUID:([%x]+)"))
+  if not spellName or not targetGUID then return end
+
+  local bucket = CleveRoids.debuffTimers[targetGUID]
+  if not bucket then return end
+
+  for spellId in pairs(bucket) do
+    local n = SpellInfo and SpellInfo(spellId)
+    if n then
+      -- strip Rank (e.g., "Sunder Armor (Rank 4)" -> "Sunder Armor")
+      n = string.gsub(n, "%s*%(%s*Rank%s+%d+%s*%)", "")
+      if n == spellName then
+        bucket[spellId] = nil
+        if not next(bucket) then CleveRoids.debuffTimers[targetGUID] = nil end
+        break
+      end
+    end
+  end
+end
+
 
 SLASH_CLEVEROID1 = "/cleveroid"
 SLASH_CLEVEROID2 = "/cleveroidmacros"

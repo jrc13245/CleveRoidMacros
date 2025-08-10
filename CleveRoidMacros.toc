@@ -7,8 +7,12 @@
 ## Version: 1.14
 ## OptionalDeps: ClassicFocus, FocusFrame, pfUI, SuperMacro, Bongos_ActionBar
 ## SavedVariables: CleveRoidMacros
+
 Localization.lua
 Init.lua
+
+Libs\LibDebuff.lua
+
 Utility.lua
 Core.lua
 Conditionals.lua
