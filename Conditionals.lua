@@ -172,23 +172,37 @@ function CleveRoids.CancelAura(auraName)
 	return false
 end
 
--- Checks whether a given piece of gear is equipped is currently equipped
--- gearId: The name (or item id) of the gear (e.g. Badge_Of_The_Swam_Guard, etc.)
--- returns: True when equipped, otherwhise false
 function CleveRoids.HasGearEquipped(gearId)
-    if not gearId or type(gearId) ~= "string" then
-        return false
-    end
+    if not gearId then return false end
 
-    for i = 1, 19 do
-        local itemLink = GetInventoryItemLink("player", i)
-        if itemLink then
-            local itemName = GetItemInfo(itemLink)
-            if itemName and (string.lower(itemName) == string.lower(gearId)) then
+    -- normalize the sought value once
+    local wantId = tonumber(gearId)
+    local wantName = (type(gearId) == "string") and string.lower(gearId) or nil
+
+    for slot = 1, 19 do
+        local link = GetInventoryItemLink("player", slot)
+        if link then
+            local id = string.match(link, "item:(%d+)")
+            local nameInBrackets = string.match(link, "%[(.+)%]")
+
+            if wantId and id and tonumber(id) == wantId then
                 return true
+            end
+
+            if wantName and nameInBrackets and string.lower(nameInBrackets) == wantName then
+                return true
+            end
+
+            -- Fallback: if we didn’t get a name from the link for some reason, try GetItemInfo
+            if wantName and not nameInBrackets then
+                local itemName = GetItemInfo(link) -- may be nil if not cached
+                if itemName and string.lower(itemName) == wantName then
+                    return true
+                end
             end
         end
     end
+
     return false
 end
 
