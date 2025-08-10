@@ -939,7 +939,7 @@ function CleveRoids.DoCast(msg)
     return handled
 end
 
--- Target using GUIDs and the correct :Click() method for targeting.
+-- Target using GUIDs (actually unit tokens) and correct targeting.
 function CleveRoids.DoTarget(msg)
     local action, conditionals = CleveRoids.GetParsedMsg(msg)
 
@@ -948,74 +948,95 @@ function CleveRoids.DoTarget(msg)
         return true
     end
 
-    -- Helper function validates a unit via its GUID.
-    local function IsGuidValid(guid, conds)
-        if not guid or not UnitExists(guid) or UnitIsDeadOrGhost(guid) then
+    -- Validate a *unit token* against parsed conditionals
+    local function IsGuidValid(unitTok, conds)
+        if not unitTok or not UnitExists(unitTok) or UnitIsDeadOrGhost(unitTok) then
             return false
         end
-        local originalCondTarget = conds.target
-        conds.target = guid
-        local allConditionsMet = true
-        for k, v in pairs(conds) do
+        local orig = conds.target
+        conds.target = unitTok
+        local ok = true
+        for k, _ in pairs(conds) do
             if not CleveRoids.ignoreKeywords[k] then
-                if not CleveRoids.Keywords[k] or not CleveRoids.Keywords[k](conds) then
-                    allConditionsMet = false
-                    break
-                end
+                local fn = CleveRoids.Keywords[k]
+                if not fn or not fn(conds) then ok = false; break end
             end
         end
-        conds.target = originalCondTarget
-        return allConditionsMet
+        conds.target = orig
+        return ok
     end
 
-    -- 1. If your current target is already valid, do nothing.
-    local _, originalTargetGUID = UnitExists("target")
-    if originalTargetGUID and IsGuidValid(originalTargetGUID, conditionals) then
+    ----------------------------------------------------------------
+    -- FAST-PATH: explicit @unit (e.g. [@mouseover], [@focus], [@party1])
+    ----------------------------------------------------------------
+    do
+        local unitTok = conditionals.target
+
+        -- Resolve @mouseover to an actual unit token that exists (works on pfUI frames)
+        if unitTok == "mouseover" then
+            if UnitExists("mouseover") then
+                unitTok = "mouseover"
+            elseif CleveRoids.mouseoverUnit and UnitExists(CleveRoids.mouseoverUnit) then
+                unitTok = CleveRoids.mouseoverUnit
+            elseif pfUI and pfUI.uf and pfUI.uf.mouseover and pfUI.uf.mouseover.unit
+               and UnitExists(pfUI.uf.mouseover.unit) then
+                unitTok = pfUI.uf.mouseover.unit
+            else
+                unitTok = nil
+            end
+        end
+
+        -- Resolve @focus via pfUI focus emulation if present
+        if unitTok == "focus" and pfUI and pfUI.uf and pfUI.uf.focus
+           and pfUI.uf.focus.label and pfUI.uf.focus.id then
+            local fTok = pfUI.uf.focus.label .. pfUI.uf.focus.id
+            if UnitExists(fTok) then unitTok = fTok else unitTok = nil end
+        end
+
+        -- If explicit unit resolves and passes conditionals, target it now (works out of range)
+        if unitTok and UnitExists(unitTok) and IsGuidValid(unitTok, conditionals) then
+            TargetUnit(unitTok)
+            return true
+        end
+    end
+    ----------------------------------------------------------------
+
+    -- 1) Keep current target if already valid
+    if UnitExists("target") and IsGuidValid("target", conditionals) then
         return true
     end
 
-    -- 2. Build a list of candidates to check.
-    --    This table will store the GUID and the object needed to target it.
+    -- 2) Build candidates: party1..4 and raid1..40 (not mutually exclusive)
     local candidates = {}
-    local children = { WorldFrame:GetChildren() }
 
-    -- Add party and raid members.
+    -- Party
+    for i = 1, 4 do
+        local u = "party"..i
+        if UnitExists(u) then table.insert(candidates, { unitId = u }) end
+    end
+
+    -- Raid (all 1..40)
     for i = 1, 40 do
-        local unit = (i <= 4) and "party"..i or "raid"..i
-        local _, guid = UnitExists(unit)
-        if guid then
-            table.insert(candidates, { guid = guid, unitId = unit })
-        end
+        local u = "raid"..i
+        if UnitExists(u) then table.insert(candidates, { unitId = u }) end
     end
 
-    -- Add nameplate units.
-    for _, frame in ipairs(children) do
-        if frame and frame.GetName and frame.Click then -- Ensure it's a clickable nameplate
-            local guid = frame:GetName(1)
-            if guid then
-                table.insert(candidates, { guid = guid, frame = frame })
-            end
-        end
-    end
+    -- Optional: also consider targettarget and mouseover if present
+    if UnitExists("targettarget") then table.insert(candidates, { unitId = "targettarget" }) end
+    if UnitExists("mouseover") then table.insert(candidates, { unitId = "mouseover" }) end
 
-    -- 3. Find the first valid candidate and target it.
-    for _, candidate in ipairs(candidates) do
-        if IsGuidValid(candidate.guid, conditionals) then
-            -- Found a winner. Target it using the appropriate method.
-            if candidate.unitId then
-                -- It's a party/raid member, target by its unit token.
-                TargetUnit(candidate.unitId)
-            elseif candidate.frame then
-                -- It's a world mob, target by simulating a click on its nameplate frame.
-                candidate.frame:Click()
-            end
+    -- 3) Find first valid and target it
+    for _, c in ipairs(candidates) do
+        if IsGuidValid(c.unitId, conditionals) then
+            TargetUnit(c.unitId)
             return true
         end
     end
 
-    -- 4. If no valid new target was found, do nothing, preserving your original target.
+    -- 4) Nothing found; preserve original target
     return true
 end
+
 
 -- Attempts to attack a unit by a set of conditionals
 -- msg: The raw message intercepted from a /petattack command
