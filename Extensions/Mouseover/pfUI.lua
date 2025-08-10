@@ -233,12 +233,66 @@ function Extension.RegisterFocusTargetScripts()
   end)
 end
 
+-- PARTYTARGET (party1target..party4target, plus player's target)
+function Extension.RegisterPartyTargetScripts()
+  if not pfUI or not pfUI.uf then return end
+
+  -- This helper function is used to hook any given frame.
+  local function hookFrame(frame, defaultUnit)
+    if not frame then return end
+    local onEnterFunc = frame:GetScript("OnEnter")
+    local onLeaveFunc = frame:GetScript("OnLeave")
+
+    frame:SetScript("OnEnter", function()
+      PfSet(this, defaultUnit)
+      -- We remove the call to the original onEnterFunc to prevent overwritten tooltips.
+    end)
+
+    frame:SetScript("OnLeave", function()
+      PfClear(this)
+      if onLeaveFunc then onLeaveFunc(this) end
+    end)
+  end
+
+  -- This helper function is specifically for party member targets (1-4)
+  local function hookPartyMemberTarget(i, frame)
+    if not frame then return end
+    local defaultUnit = "party" .. i .. "target"
+    hookFrame(frame, defaultUnit)
+  end
+
+  -- Case A: Hook dedicated arrays for party members 1-4
+  if pfUI.uf.grouptarget then
+    for i = 1, 4 do hookPartyMemberTarget(i, pfUI.uf.grouptarget[i]) end
+  end
+  if pfUI.uf.partytarget then
+    for i = 1, 4 do hookPartyMemberTarget(i, pfUI.uf.partytarget[i]) end
+  end
+
+  -- Case B: Hook child target frames for party members 1-4
+  if pfUI.uf.group then
+    for i = 1, 4 do
+      local g = pfUI.uf.group[i]
+      if g and g.target then hookPartyMemberTarget(i, g.target) end
+    end
+  end
+
+  --- START OF FIX to include party0target ---
+  -- Case C: Specifically find and hook the player's own target frame (group[0].target)
+  if pfUI.uf.group and pfUI.uf.group[0] and pfUI.uf.group[0].target then
+    -- The player's target UnitID is always "target", not "party0target".
+    hookFrame(pfUI.uf.group[0].target, "target")
+  end
+  --- END OF FIX ---
+end
+
 function Extension.PLAYER_ENTERING_WORLD()
   if not pfUI or not pfUI.uf then return end
   Extension.RegisterPlayerScripts()
   Extension.RegisterTargetScripts()
   Extension.RegisterTargetTargetScripts()
   Extension.RegisterPartyScripts()
+  Extension.RegisterPartyTargetScripts()
   Extension.RegisterRaidScripts()
   Extension.RegisterFocusScripts()
   Extension.RegisterFocusTargetScripts()
