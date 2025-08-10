@@ -14,10 +14,10 @@ Init.lua
 Libs\LibDebuff.lua
 
 Utility.lua
+ExtensionsManager.lua
 Core.lua
 Conditionals.lua
 Console.lua
-ExtensionsManager.lua
 
 Compatibility\SuperMacro.lua
 Compatibility\pfUI.lua

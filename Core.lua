@@ -2122,8 +2122,10 @@ function Ext.OnRawLog()
   local raw = arg2
   if not raw or not string.find(raw, "fades from") then return end
 
-  local spellName = string.match(raw, "^(.-) fades from ")
-  local targetGUID = norm(string.match(raw, "GUID:([%x]+)"))
+  local _, _, spellName = string.find(raw, "^(.-) fades from ")
+  local _, _, guidHex = string.find(raw, "GUID:([%x]+)")
+  local targetGUID = norm(guidHex)
+
   if not spellName or not targetGUID then return end
 
   local bucket = CleveRoids.debuffTimers[targetGUID]
