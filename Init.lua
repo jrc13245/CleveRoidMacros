@@ -129,4 +129,14 @@ CleveRoids.WeaponTypeNames = {
     Wands     = { slot = "RangedSlot", name = CleveRoids.Localized.Wand },
 }
 
+if not select then
+  function select(n, ...)
+    if n == '#' then return arg.n end
+    local out = {}
+    for i = n, arg.n do out[table.getn(out) + 1] = arg[i] end
+    return unpack(out)
+  end
+end
+
+
 _G["CleveRoids"] = CleveRoids

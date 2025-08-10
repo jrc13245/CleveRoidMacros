@@ -2099,9 +2099,14 @@ local function norm(g)
   return string.upper(g)
 end
 
--- Events
-Ext.RegisterEvent("UNIT_CASTEVENT", "OnCastEvent")
-Ext.RegisterEvent("RAW_COMBATLOG",  "OnRawLog")
+function Ext.OnLoad()
+  -- Only hook SuperWoW events if present
+  if CleveRoids.hasSuperwow then
+    Ext.RegisterEvent("UNIT_CASTEVENT", "OnCastEvent")
+    Ext.RegisterEvent("RAW_COMBATLOG",  "OnRawLog")
+  end
+end
+Ext.onload = Ext.OnLoad -- in case the manager looks for lowercase
 
 -- args: casterGUID, targetGUID, eventType, spellId, castDuration
 function Ext.OnCastEvent()
@@ -2114,8 +2119,9 @@ function Ext.OnCastEvent()
   targetGUID = norm(targetGUID)
   if not targetGUID then return end
 
-  CleveRoids.debuffTimers[targetGUID] = CleveRoids.debuffTimers[targetGUID] or {}
-  CleveRoids.debuffTimers[targetGUID][spellId] = GetTime() + dur
+  local buckets = CleveRoids.debuffTimers
+  buckets[targetGUID] = buckets[targetGUID] or {}
+  buckets[targetGUID][spellId] = GetTime() + dur
 end
 
 function Ext.OnRawLog()
@@ -2123,9 +2129,8 @@ function Ext.OnRawLog()
   if not raw or not string.find(raw, "fades from") then return end
 
   local _, _, spellName = string.find(raw, "^(.-) fades from ")
-  local _, _, guidHex = string.find(raw, "GUID:([%x]+)")
+  local _, _, guidHex   = string.find(raw, "GUID:([%x]+)")
   local targetGUID = norm(guidHex)
-
   if not spellName or not targetGUID then return end
 
   local bucket = CleveRoids.debuffTimers[targetGUID]
@@ -2134,8 +2139,7 @@ function Ext.OnRawLog()
   for spellId in pairs(bucket) do
     local n = SpellInfo and SpellInfo(spellId)
     if n then
-      -- strip Rank (e.g., "Sunder Armor (Rank 4)" -> "Sunder Armor")
-      n = string.gsub(n, "%s*%(%s*Rank%s+%d+%s*%)", "")
+      n = string.gsub(n, "%s*%(%s*Rank%s+%d+%s*%)", "") -- strip "(Rank N)"
       if n == spellName then
         bucket[spellId] = nil
         if not next(bucket) then CleveRoids.debuffTimers[targetGUID] = nil end
@@ -2144,6 +2148,7 @@ function Ext.OnRawLog()
     end
   end
 end
+
 
 
 SLASH_CLEVEROID1 = "/cleveroid"
