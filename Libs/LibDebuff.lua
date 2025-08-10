@@ -93,3 +93,82 @@ do
     end
   end)
 end
+
+local function norm(g)
+  if not g then return nil end
+  g = string.gsub(g, "^0x", "")
+  return string.upper(g)
+end
+
+local function strip_rank(name)
+  return name and string.gsub(name, "%s*%(%s*Rank%s+%d+%s*%)", "")
+end
+
+-- Try to resolve a base duration for a spellID:
+local function get_base_duration(spellID)
+  -- 1) pfUI’s known durations by unranked name
+  if SpellInfo and pfUI and pfUI.api and pfUI.api.libdebuff then
+    local n = SpellInfo(spellID)
+    n = strip_rank(n)
+    local d = pfUI.api.libdebuff.Durations[n]
+    if d and d > 0 then return d end
+  end
+  -- 2) Learned (moving average) durations from this file
+  local d = CleveRoids.api.libdebuff:GetDurationBySpellID(spellID)
+  if d and d > 0 then return d end
+  -- 3) Fallback: unknown
+  return nil
+end
+
+-- === Writer: set expiry on CAST if we know a base duration ===
+do
+  local f = CreateFrame("Frame")
+  f:RegisterEvent("UNIT_CASTEVENT")
+  f:SetScript("OnEvent", function()
+    local casterGUID, targetGUID, evType, spellId = arg1, arg2, arg3, arg4
+    if evType ~= "CAST" or not targetGUID or not spellId then return end
+    targetGUID = norm(targetGUID)
+
+    local dur = get_base_duration(spellId)
+    if not dur then return end  -- no duration learned yet; skip
+
+    CleveRoids.debuffTimers[targetGUID] = CleveRoids.debuffTimers[targetGUID] or {}
+    CleveRoids.debuffTimers[targetGUID][spellId] = GetTime() + dur
+    -- optional debug:
+    -- CleveRoids.Print("timer set", targetGUID, spellId, string.format("%.1fs", dur))
+  end)
+end
+
+-- === Cleaner: clear the specific spell on FADE (from RAW_COMBATLOG) ===
+do
+  local f = CreateFrame("Frame")
+  f:RegisterEvent("RAW_COMBATLOG")
+  f:SetScript("OnEvent", function()
+    local raw = arg2
+    if not raw or not string.find(raw, "fades from") then return end
+
+    local spellName = string.match(raw, "^(.-) fades from ")
+    local guid = string.match(raw, "GUID:([%x]+)")
+    if not spellName or not guid then return end
+    spellName = strip_rank(spellName)
+    guid = norm(guid)
+
+    local t = CleveRoids.debuffTimers[guid]
+    if not t then return end
+
+    -- Find matching spellID by name and clear its timer
+    if SpellInfo then
+      for sid, _ in pairs(t) do
+        local n = SpellInfo(sid)
+        n = strip_rank(n)
+        if n == spellName then
+          t[sid] = nil
+          -- optional debug:
+          -- CleveRoids.Print("timer cleared", guid, sid)
+          break
+        end
+      end
+    end
+  end)
+end
+
