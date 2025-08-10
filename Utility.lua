@@ -20,6 +20,67 @@ function CleveRoids.Trim(str)
     return string.gsub(str,"^%s*(.-)%s*$", "%1")
 end
 
+do
+  local _G = _G or getfenv(0)
+  local CleveRoids = _G.CleveRoids or {}
+  _G.CleveRoids = CleveRoids
+
+  CleveRoids.__mo = CleveRoids.__mo or { sources = {}, current = nil }
+
+  local PRIORITY = {
+    pfui    = 3,   -- unitframe hovers should win
+    blizz   = 3,   -- same level as pfui
+    tooltip = 1,   -- lowest; don’t stomp frames
+  }
+
+  local function getBest()
+    local bestSource, bestUnit, bestP = nil, nil, -1
+    for source, unit in CleveRoids.__mo.sources do
+      if unit and unit ~= "" then
+        local p = PRIORITY[source] or 0
+        if p > bestP then
+          bestP, bestSource, bestUnit = p, source, unit
+        end
+      end
+    end
+    return bestSource, bestUnit
+  end
+
+  local function apply(unit)
+    -- SuperWoW path if available; otherwise internal fallback
+    if CleveRoids.hasSuperwow and _G.SetMouseoverUnit then
+      _G.SetMouseoverUnit(unit) -- nil clears
+    else
+      CleveRoids.mouseoverUnit = unit
+    end
+    if CleveRoids.QueueActionUpdate then CleveRoids.QueueActionUpdate() end
+  end
+
+  function CleveRoids.SetMouseoverFrom(source, unit)
+    -- set/refresh a source’s unit
+    if not source then return end
+    CleveRoids.__mo.sources[source] = unit
+    local _, bestUnit = getBest()
+    if bestUnit ~= CleveRoids.__mo.current then
+      CleveRoids.__mo.current = bestUnit
+      apply(bestUnit)
+    end
+  end
+
+  function CleveRoids.ClearMouseoverFrom(source, unitIfMatch)
+    if not source then return end
+    if unitIfMatch and CleveRoids.__mo.sources[source] ~= unitIfMatch then
+      return -- don’t clear if it was replaced meanwhile
+    end
+    CleveRoids.__mo.sources[source] = nil
+    local _, bestUnit = getBest()
+    if bestUnit ~= CleveRoids.__mo.current then
+      CleveRoids.__mo.current = bestUnit
+      apply(bestUnit)
+    end
+  end
+end
+
 -- TODO: Get rid of one Split function.  CleveRoids.splitString is ~10% slower
 function CleveRoids.Split(s, p, trim)
     local r, o = {}, 1
