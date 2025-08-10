@@ -1705,13 +1705,23 @@ CleveRoids.Frame:RegisterEvent("STOP_AUTOREPEAT_SPELL")
 CleveRoids.Frame:RegisterEvent("SPELLCAST_CHANNEL_START")
 CleveRoids.Frame:RegisterEvent("SPELLCAST_CHANNEL_STOP")
 
-
 function CleveRoids.Frame:PLAYER_LOGIN()
     _, CleveRoids.playerClass = UnitClass("player")
     _, CleveRoids.playerGuid = UnitExists("player")
     CleveRoids.IndexSpells()
     CleveRoids.initializationTimer = GetTime() + 1.5
-    CleveRoids.Print("|cFF4477FFCleveR|r|cFFFFFFFFoid Macros|r |cFF00FF00Loaded|r - See the README.")
+    if not CleveRoids.hasSuperwow or not IsSpellInRange then
+        if not CleveRoids.hasSuperwow then
+            CleveRoids.Print("|cFFFF0000CLeveRoidMacros|r requires |cFF00FFFFbalakethelock's SuperWoW|r:")
+            CleveRoids.Print("https://github.com/balakethelock/SuperWoW")
+        end
+        if not IsSpellInRange then
+            CleveRoids.Print("|cFFFF0000CLeveRoidMacros|r requires |cFF00FFFFpepopo978's Nampower|r:")
+            CleveRoids.Print("https://github.com/pepopo978/nampower")
+        end
+    else
+        CleveRoids.Print("|cFF4477FFCleveR|r|cFFFFFFFFoid Macros|r |cFF00FF00Loaded|r - See the README.")
+    end
 end
 
 function CleveRoids.Frame:ADDON_LOADED(addon)
