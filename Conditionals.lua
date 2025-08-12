@@ -175,15 +175,15 @@ end
 function CleveRoids.HasGearEquipped(gearId)
     if not gearId then return false end
 
-    -- normalize the sought value once
     local wantId = tonumber(gearId)
     local wantName = (type(gearId) == "string") and string.lower(gearId) or nil
 
     for slot = 1, 19 do
         local link = GetInventoryItemLink("player", slot)
         if link then
-            local id = string.match(link, "item:(%d+)")
-            local nameInBrackets = string.match(link, "%[(.+)%]")
+            -- Lua 5.0: use string.find with captures
+            local _, _, id = string.find(link, "item:(%d+)")
+            local _, _, nameInBrackets = string.find(link, "%[(.+)%]")
 
             if wantId and id and tonumber(id) == wantId then
                 return true
@@ -193,9 +193,9 @@ function CleveRoids.HasGearEquipped(gearId)
                 return true
             end
 
-            -- Fallback: if we didn’t get a name from the link for some reason, try GetItemInfo
-            if wantName and not nameInBrackets then
-                local itemName = GetItemInfo(link) -- may be nil if not cached
+            -- Fallback: resolve via GetItemInfo using the numeric id if we have it
+            if wantName and not nameInBrackets and id then
+                local itemName = GetItemInfo(tonumber(id)) -- may be nil if not cached
                 if itemName and string.lower(itemName) == wantName then
                     return true
                 end
@@ -205,6 +205,7 @@ function CleveRoids.HasGearEquipped(gearId)
 
     return false
 end
+
 
 -- Checks whether or not the given weaponType is currently equipped
 -- weaponType: The name of the weapon's type (e.g. Axe, Shield, etc.)
