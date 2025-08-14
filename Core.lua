@@ -1058,11 +1058,11 @@ end
 
 -- Attempts to attack a unit by a set of conditionals
 -- msg: The raw message intercepted from a /petattack command
-function CleveRoids.DoPetAttack(msg)
+function CleveRoids.DoPetAction(action, msg)
     local handled = false
 
     for k, v in pairs(CleveRoids.splitStringIgnoringQuotes(msg)) do
-        if CleveRoids.DoWithConditionals(v, PetAttack, CleveRoids.FixEmptyTarget, true, PetAttack) then
+        if CleveRoids.DoWithConditionals(v, action, CleveRoids.FixEmptyTarget, true, action) then
             handled = true
             break
         end
