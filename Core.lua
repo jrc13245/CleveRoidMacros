@@ -105,15 +105,27 @@ function CleveRoids.TestForActiveAction(actions)
         if actions.active.spell then
             actions.active.inRange = 1
 
-            -- nampower range check
-            if IsSpellInRange then
-            	local unit = actions.active.conditionals and actions.active.conditionals.target or "target"
-            	if unit == "focus" and pfUI then
-            		actions.active.inRange = IsSpellInRange(actions.active.action, pfUI.uf.focus.id)
-            	elseif UnitExists(unit) then
-            		actions.active.inRange = IsSpellInRange(actions.active.action, unit)
-            	end
-            end
+            -- nampower range check (rebuild name(rank) like DoWithConditionals)
+			if IsSpellInRange then
+				local unit = actions.active.conditionals and actions.active.conditionals.target or "target"
+				if unit == "focus" and pfUI then
+					unit = pfUI.uf.focus.id
+				end
+				local castName = actions.active.action
+				if actions.active.spell and actions.active.spell.name then
+					local rank = actions.active.spell.rank
+								 or (actions.active.spell.highest and actions.active.spell.highest.rank)
+					if rank and rank ~= "" then
+						castName = actions.active.spell.name .. "(" .. rank .. ")"
+					end
+				end
+				if UnitExists(unit) then
+					local r = IsSpellInRange(castName, unit)
+					if r ~= nil then
+						actions.active.inRange = r
+					end
+				end
+			end
 
             actions.active.oom = (UnitMana("player") < actions.active.spell.cost)
 
@@ -905,12 +917,18 @@ function CleveRoids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBefo
             result = CleveRoids.ExecuteMacroByName(string.sub(msg, 2, -2))
         end
     else -- This 'else' corresponds to 'if string.sub(msg, 1, 1) == "{"...'
+        local castMsg = msg
+        if action == CastSpellByName and not string.find(msg, "%(Rank %d+%)") then
+            local sp = CleveRoids.GetSpell(msg)
+            local rank = sp and (sp.rank or (sp.highest and sp.highest.rank))
+            if rank and rank ~= "" then
+                castMsg = msg .. "(" .. rank .. ")"
+            end
+        end
         if CleveRoids.hasSuperwow and action == CastSpellByName and conditionals.target then
-            CastSpellByName(msg, conditionals.target) -- SuperWoW handles targeting via argument
+            CastSpellByName(castMsg, conditionals.target) -- SuperWoW handles targeting via argument
         elseif action == CastSpellByName then
-             -- For standard CastSpellByName, targeting is handled by the TargetUnit call above.
-             -- Pass only the spell name.
-            action(msg)
+             action(castMsg)
         else
             -- For other actions like UseContainerItem etc.
             action(msg)
@@ -1713,11 +1731,11 @@ function CleveRoids.Frame:PLAYER_LOGIN()
     CleveRoids.initializationTimer = GetTime() + 1.5
     if not CleveRoids.hasSuperwow or not IsSpellInRange then
         if not CleveRoids.hasSuperwow then
-            CleveRoids.Print("|cFFFF0000CLeveRoidMacros|r requires |cFF00FFFFbalakethelock's SuperWoW|r:")
+            CleveRoids.Print("|cFFFF0000CleveRoidMacros|r requires |cFF00FFFFbalakethelock's SuperWoW|r:")
             CleveRoids.Print("https://github.com/balakethelock/SuperWoW")
         end
         if not IsSpellInRange then
-            CleveRoids.Print("|cFFFF0000CLeveRoidMacros|r requires |cFF00FFFFpepopo978's Nampower|r:")
+            CleveRoids.Print("|cFFFF0000CleveRoidMacros|r requires |cFF00FFFFpepopo978's Nampower|r:")
             CleveRoids.Print("https://github.com/pepopo978/nampower")
         end
     else
