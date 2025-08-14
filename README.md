@@ -165,7 +165,12 @@ Check slash command and all conditional lists for new usages!
 | /stopattack           | * | Stops auto-attacking. |
 | /stopcasting          | * | Stops casting. |
 | /unqueue          | * | Stops casting. |
-| /petattack            | * | Starts your pet's auto-attack. |
+| /petattack            | * | Command pet to Attack. |
+| /petfollow            | * | Command pet to Follow. |
+| /petwait              | * | Command pet to Wait (Stay). |
+| /petaggressive        | * | Set pet mode to Aggressive. |
+| /petdefensive         | * | Set pet mode to Defensive. |
+| /petpassive           | * | Set pet mode to Passive. |
 | /castsequence         | * | Performs a cast sequence.  See [below](#cast-sequence) for more infomation. |
 | /equip                | * | Equips an item by name or itemid. |
 | /equipmh              | * | Equips an item by name or itemid into your mainhand slot. |
