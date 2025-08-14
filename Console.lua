@@ -7,7 +7,27 @@ local CleveRoids = _G.CleveRoids or {}
 
 SLASH_PETATTACK1 = "/petattack"
 
-SlashCmdList.PETATTACK = function(msg) CleveRoids.DoPetAttack(msg); end
+SlashCmdList.PETATTACK = function(msg) CleveRoids.DoPetAction(PetAttack, msg); end
+
+SLASH_PETFOLLOW1 = "/petfollow"
+
+SlashCmdList.PETFOLLOW = function(msg) CleveRoids.DoPetAction(PetFollow, msg); end
+
+SLASH_PETWAIT1 = "/petwait"
+
+SlashCmdList.PETWAIT = function(msg) CleveRoids.DoPetAction(PetWait, msg); end
+
+SLASH_PETPASSIVE1 = "/petpassive"
+
+SlashCmdList.PETPASSIVE = function(msg) CleveRoids.DoPetAction(PetPassiveMode, msg); end
+
+SLASH_PETAGGRESSIVE1 = "/petaggressive"
+
+SlashCmdList.PETAGGRESSIVE = function(msg) CleveRoids.DoPetAction(PetAggressiveMode, msg); end
+
+SLASH_PETDEFENSIVE1 = "/petdefensive"
+
+SlashCmdList.PETDEFENSIVE = function(msg) CleveRoids.DoPetAction(PetDefensiveMode, msg); end
 
 SLASH_RELOAD1 = "/rl"
 
@@ -181,3 +201,4 @@ SLASH_STOPMACRO1 = "/stopmacro"
 SlashCmdList.STOPMACRO = function(msg)
     CleveRoids.DoStopMacro(msg)
 end
+
