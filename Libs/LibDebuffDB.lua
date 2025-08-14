@@ -32,6 +32,7 @@ CleveRoids.DebuffDB = {
     [14323] = 120, -- Hunter's Mark (Rank 2)
     [14324] = 120, -- Hunter's Mark (Rank 3)
     [14325] = 120, -- Hunter's Mark (Rank 4)
+    [19503] = 4, -- Scatter Shot
 
     --[[ Priest Spells ]]
     [1425] = 30, -- Shackle Undead (Rank 1)
@@ -138,6 +139,17 @@ CleveRoids.DebuffDB = {
     [28270] = 50, -- Polymorph: Cow (Rank 1)
     [28271] = 50, -- Polymorph: Turtle (Rank 1)
     [28272] = 50, -- Polymorph: Pig (Rank 1)
+    [116] = 5,
+    [205] = 6,
+    [837] = 6,
+    [7322] = 7,
+    [8406] = 7,
+    [8407] = 8,
+    [8408] = 8,
+    [10179] = 9,
+    [10180] = 9,
+    [10181] = 9,
+    [25304] = 9,
 
     --[[ Warrior Spells ]]
     [772] = 9, -- Rend (Rank 1)
@@ -210,6 +222,9 @@ CleveRoids.DebuffDB = {
     [9747] = 30, -- Demoralizing Roar (Rank 4)
     [9898] = 30, -- Demoralizing Roar (Rank 5)
     [5209] = 6, -- Challenging Roar (Rank 1)
+    [9005] = 2, -- Pounce (Rank 1)
+    [9823] = 2, -- Pounce (Rank 2)
+    [9827] = 2, -- Pounce (Rank 3)
 
     --[[ Rogue Spells ]]
     [2094] = 10, -- Blind (Rank 1)
