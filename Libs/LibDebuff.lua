@@ -54,8 +54,8 @@ end
 -- B) Learn from RAW_COMBATLOG fades: “… <Spell> fades from <unit> (GUID:0x…)”
 do
   local function parseFade(line)
-    local spell = string.match(line, "^(.-) fades from ")
-    local guid  = string.match(line, "GUID:([%x]+)")
+    local spell = string.find(line, "^(.-) fades from ")
+    local guid  = string.find(line, "GUID:([%x]+)")
     return spell, guid
   end
 
